@@ -200,6 +200,36 @@ export const bulkUpdate = async (req: Request, res: Response): Promise<void> => 
  *     responses:
  *       200:
  *         description: CSV file download
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: submittedAfter
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: submittedBefore
+ *         schema:
+ *           type: string
+ *           format: date
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: submittedAfter
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: submittedBefore
+ *         schema:
+ *           type: string
+ *           format: date
  */
 export const exportApplications = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -234,6 +264,12 @@ export const exportApplications = async (req: Request, res: Response): Promise<v
  *     responses:
  *       200:
  *         description: Student overview
+ *     parameters:
+ *       - in: path
+ *         name: profileId
+ *         required: true
+ *         schema:
+ *           type: string
  */
 export const getStudentOverview = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -304,6 +340,12 @@ export const getStudentApplications = async (req: Request, res: Response): Promi
  *     responses:
  *       200:
  *         description: List of documents
+ *     parameters:
+ *       - in: path
+ *         name: profileId
+ *         required: true
+ *         schema:
+ *           type: string
  */
 export const getStudentDocuments = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -339,6 +381,12 @@ export const getStudentDocuments = async (req: Request, res: Response): Promise<
  *     responses:
  *       200:
  *         description: Student timeline events
+ *     parameters:
+ *       - in: path
+ *         name: profileId
+ *         required: true
+ *         schema:
+ *           type: string
  */
 export const getStudentTimeline = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -382,6 +430,14 @@ export const getStudentTimeline = async (req: Request, res: Response): Promise<v
  *     responses:
  *       200:
  *         description: Search results
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
  */
 export const searchStudents = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -438,11 +494,19 @@ export const searchStudents = async (req: Request, res: Response): Promise<void>
  *     responses:
  *       201:
  *         description: Note added successfully
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: false
+ *         description: Optional ID if adding via /applications/:id/notes
+ *         schema:
+ *           type: string
  */
 export const addNote = async (req: Request, res: Response): Promise<void> => {
     try {
         const adminId = (req as any).user!.id;
-        const { applicationId } = req.params;
+        // Route can be /notes (body has applicationId) or /applications/:id/notes (params has id)
+        const applicationId = req.params.id || req.body.applicationId;
         const { noteText, isPrivate } = req.body;
 
         const note = await adminService.addNote(applicationId as string, adminId, noteText, isPrivate);
@@ -474,14 +538,26 @@ export const addNote = async (req: Request, res: Response): Promise<void> => {
  *     summary: Update note
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Note updated
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
  */
 export const updateNote = async (req: Request, res: Response): Promise<void> => {
     try {
         const adminId = (req as any).user!.id;
-        const { noteId } = req.params;
+        const noteId = req.params.id;
         const { noteText } = req.body;
 
         const note = await adminService.updateNote(noteId as string, adminId, noteText);
@@ -513,14 +589,26 @@ export const updateNote = async (req: Request, res: Response): Promise<void> => 
  *     summary: Delete note
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Note deleted
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
  */
 export const deleteNote = async (req: Request, res: Response): Promise<void> => {
     try {
         const adminId = (req as any).user!.id;
-        const { noteId } = req.params;
+        const noteId = req.params.id;
 
         await adminService.deleteNote(noteId as string, adminId);
 
