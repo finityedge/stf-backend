@@ -1,0 +1,361 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  STUDENT
+  ADMIN
+  BOARD
+}
+
+enum ApplicationStatus {
+  DRAFT
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  DISBURSED
+}
+
+enum EducationLevel {
+  HIGH_SCHOOL
+  UNIVERSITY
+  COLLEGE
+  TVET
+}
+
+enum ProfileDocumentType {
+  NATIONAL_ID
+  PASSPORT
+  KCSE_CERT
+  ADMISSION_LETTER
+  STUDENT_ID
+  TRANSCRIPT
+}
+
+enum ApplicationDocumentType {
+  FEE_STRUCTURE
+  BALANCE_STATEMENT
+  SUPPORT_LETTER
+  OTHER_EVIDENCE
+}
+
+// ==================== USER & AUTHENTICATION ====================
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  phone     String    @unique
+  password  String
+  role      UserRole  @default(STUDENT)
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  studentProfile StudentProfile?
+  consentLogs    DataConsentLog[]
+  adminNotes     AdminNote[]
+  statusChanges  ApplicationStatusHistory[]
+
+  @@index([email])
+  @@index([phone])
+  @@map("users")
+}
+
+// ==================== STUDENT PROFILE ====================
+
+model StudentProfile {
+  id                String         @id @default(uuid())
+  userId            String         @unique
+  fullName          String
+  dateOfBirth       DateTime
+  gender            String
+  ageRange          String?        // For analytics (e.g., "18-22", "23-27")
+  nationalIdNumber  String?        @unique
+  passportNumber    String?        @unique
+  
+  // Geographic location
+  countyId          String
+  subCountyId       String
+  wardId            String
+  currentResidence  String?
+  
+  // Institution details
+  institutionName   String
+  institutionType   EducationLevel
+  programmeOrCourse String
+  admissionYear     Int
+  
+  // Household information (for high school students)
+  whoLivesWith      String?
+  
+  // Profile completeness
+  isComplete        Boolean        @default(false)
+  
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  // Relations
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  county            County             @relation(fields: [countyId], references: [id])
+  subCounty         SubCounty          @relation(fields: [subCountyId], references: [id])
+  ward              Ward               @relation(fields: [wardId], references: [id])
+  applications      Application[]
+  profileDocuments  ProfileDocument[]
+
+  @@index([nationalIdNumber])
+  @@index([passportNumber])
+  @@index([countyId])
+  @@index([institutionType])
+  @@map("student_profiles")
+}
+
+// ==================== PROFILE DOCUMENTS (Reusable) ====================
+
+model ProfileDocument {
+  id               String             @id @default(uuid())
+  studentProfileId String
+  documentType     ProfileDocumentType
+  originalFilename String
+  storedFilename   String             @unique
+  filePath         String
+  fileSize         Int
+  mimeType         String
+  uploadedAt       DateTime           @default(now())
+  
+  // Verification (for future use)
+  verifiedByAdmin  Boolean            @default(false)
+  verifiedAt       DateTime?
+  verifiedBy       String?
+
+  // Relations
+  studentProfile   StudentProfile     @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  applicationLinks ApplicationProfileDocumentLink[]
+
+  @@index([studentProfileId])
+  @@index([documentType])
+  @@map("profile_documents")
+}
+
+// ==================== APPLICATION ====================
+
+model Application {
+  id                     String            @id @default(uuid())
+  applicationNumber      String            @unique  // Auto-generated: STF-YYYY-NNN
+  studentProfileId       String
+  status                 ApplicationStatus @default(DRAFT)
+  
+  // Application-specific data (entered during application, NOT from profile)
+  outstandingFeesBalance Decimal           @db.Decimal(12, 2)
+  hardshipNarrative      String            @db.Text
+  currentYearOfStudy     String
+  modeOfSponsorship      String[]          // JSON array: ["SELF", "HELB", "PARENT", "GUARDIAN", "OTHER"]
+  howSupportingEducation String[]          // JSON array
+  currentFeeSituation    String?
+  isFeesAffectingStudies Boolean           @default(false)
+  hasBeenSentHome        Boolean           @default(false)
+  hasMissedExamsOrClasses Boolean          @default(false)
+  difficultiesFaced      String[]          // JSON array
+  goalForAcademicYear    String?           @db.Text
+  referralSource         String?
+  
+  // Snapshot of profile data (immutable once PENDING)
+  snapshotFullName       String?
+  snapshotDateOfBirth    DateTime?
+  snapshotGender         String?
+  snapshotNationalId     String?
+  snapshotPassportNumber String?
+  snapshotInstitution    String?
+  snapshotProgramme      String?
+  snapshotCounty         String?
+  snapshotSubCounty      String?
+  snapshotWard           String?
+  snapshotPhone          String?
+  snapshotEmail          String?
+  snapshotEducationLevel EducationLevel?
+  
+  // Timestamps
+  submittedAt            DateTime?
+  reviewedAt             DateTime?
+  reviewedBy             String?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  
+  // Disbursement tracking
+  disbursedAmount        Decimal?          @db.Decimal(12, 2)
+  disbursedAt            DateTime?
+  disbursementNotes      String?
+
+  // Relations
+  studentProfile         StudentProfile              @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  applicationDocuments   ApplicationDocument[]
+  profileDocumentLinks   ApplicationProfileDocumentLink[]
+  adminNotes             AdminNote[]
+  statusHistory          ApplicationStatusHistory[]
+
+  @@index([status])
+  @@index([studentProfileId])
+  @@index([submittedAt])
+  @@index([outstandingFeesBalance])
+  @@index([studentProfileId, submittedAt(sort: Desc)])
+  @@map("applications")
+}
+
+// ==================== APPLICATION DOCUMENTS (Per-application) ====================
+
+model ApplicationDocument {
+  id               String                 @id @default(uuid())
+  applicationId    String
+  documentType     ApplicationDocumentType
+  originalFilename String
+  storedFilename   String                 @unique
+  filePath         String
+  fileSize         Int
+  mimeType         String
+  uploadedAt       DateTime               @default(now())
+
+  // Relations
+  application      Application            @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([documentType])
+  @@map("application_documents")
+}
+
+// ==================== APPLICATION-PROFILE DOCUMENT LINK (Bridge Table) ====================
+
+model ApplicationProfileDocumentLink {
+  id                String          @id @default(uuid())
+  applicationId     String
+  profileDocumentId String
+  linkedAt          DateTime        @default(now())
+
+  // Relations
+  application       Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  profileDocument   ProfileDocument @relation(fields: [profileDocumentId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, profileDocumentId])
+  @@index([applicationId])
+  @@index([profileDocumentId])
+  @@map("application_profile_document_links")
+}
+
+// ==================== APPLICATION STATUS HISTORY ====================
+
+model ApplicationStatusHistory {
+  id             String             @id @default(uuid())
+  applicationId  String
+  previousStatus ApplicationStatus?
+  newStatus      ApplicationStatus
+  changedBy      String
+  changedAt      DateTime           @default(now())
+  reason         String?
+  autoGenerated  Boolean            @default(false)
+
+  // Relations
+  application    Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  changedByUser  User               @relation(fields: [changedBy], references: [id])
+
+  @@index([applicationId])
+  @@index([changedAt])
+  @@map("application_status_history")
+}
+
+// ==================== ADMIN NOTES ====================
+
+model AdminNote {
+  id            String    @id @default(uuid())
+  applicationId String
+  adminId       String
+  noteText      String    @db.Text
+  isPrivate     Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  // Relations
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  admin         User        @relation(fields: [adminId], references: [id])
+
+  @@index([applicationId])
+  @@index([adminId])
+  @@map("admin_notes")
+}
+
+// ==================== DATA CONSENT LOG (KDPA Compliance) ====================
+
+model DataConsentLog {
+  id             String   @id @default(uuid())
+  userId         String
+  ipAddress      String
+  consentVersion String
+  userAgent      String?
+  consentedAt    DateTime @default(now())
+
+  // Relations
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([consentedAt])
+  @@map("data_consent_logs")
+}
+
+// ==================== GEOGRAPHIC REFERENCE DATA ====================
+
+model County {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String   @unique
+  createdAt DateTime @default(now())
+
+  // Relations
+  subCounties     SubCounty[]
+  studentProfiles StudentProfile[]
+
+  @@map("counties")
+}
+
+model SubCounty {
+  id        String   @id @default(uuid())
+  countyId  String
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now())
+
+  // Relations
+  county          County           @relation(fields: [countyId], references: [id], onDelete: Cascade)
+  wards           Ward[]
+  studentProfiles StudentProfile[]
+
+  @@unique([countyId, name])
+  @@index([countyId])
+  @@map("sub_counties")
+}
+
+model Ward {
+  id          String   @id @default(uuid())
+  subCountyId String
+  name        String
+  code        String   @unique
+  createdAt   DateTime @default(now())
+
+  // Relations
+  subCounty       SubCounty        @relation(fields: [subCountyId], references: [id], onDelete: Cascade)
+  studentProfiles StudentProfile[]
+
+  @@unique([subCountyId, name])
+  @@index([subCountyId])
+  @@map("wards")
+}
