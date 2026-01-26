@@ -41,6 +41,8 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       # Logging
       LOG_LEVEL: info
+      # Server URL for Swagger
+      APP_URL: "https://${DOMAIN_NAME}"
     volumes:
       # Persistent storage for uploads
       - uploads_prod_data:/app/uploads

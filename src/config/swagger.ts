@@ -14,12 +14,8 @@ const options = {
         },
         servers: [
             {
-                url: 'http://localhost:3000',
-                description: 'Local Development Server',
-            },
-            {
-                url: 'https://api.stf-portal.org',
-                description: 'Production Server',
+                url: process.env.APP_URL || 'http://localhost:3000',
+                description: 'API Server',
             },
         ],
         components: {
