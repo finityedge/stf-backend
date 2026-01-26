@@ -1,0 +1,33 @@
+{
+    # Global options
+    admin off
+    # Auto-HTTPS is enabled by default
+}
+
+{$DOMAIN_NAME:localhost} {
+    # Reverse proxy to backend app
+    reverse_proxy app:3000
+
+    # Enable gzip compression
+    encode gzip
+
+    # Basic security headers
+    header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000;"
+        # Disable X-Powered-By
+        -X-Powered-By
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        # XMM protection
+        X-XSS-Protection "1; mode=block"
+        # Clickjacking protection
+        X-Frame-Options "DENY"
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}

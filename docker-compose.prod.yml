@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: stf-portal-db-prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-stf_portal}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - stf-network-prod
+
+  # Node.js Application (Production)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: stf-portal-app-prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stf_portal}?schema=public
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      UPLOAD_DIR: ./uploads
+      # Encryption key for sensitive data
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      # Logging
+      LOG_LEVEL: info
+    volumes:
+      # Persistent storage for uploads
+      - uploads_prod_data:/app/uploads
+      # Persistent storage for logs
+      - logs_prod_data:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - stf-network-prod
+    # Run migrations on startup (using deploy-time command pattern)
+    command: >
+      sh -c "
+        npx prisma migrate deploy &&
+        node dist/index.js
+      "
+
+  # Caddy Web Server (Reverse Proxy + Auto HTTPS)
+  caddy:
+    image: caddy:2-alpine
+    container_name: stf-portal-web-prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    networks:
+      - stf-network-prod
+
+volumes:
+  postgres_prod_data:
+  uploads_prod_data:
+  logs_prod_data:
+  caddy_data:
+  caddy_config:
+
+
+networks:
+  stf-network-prod:
+    driver: bridge
