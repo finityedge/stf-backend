@@ -62,7 +62,28 @@ const options = {
                         institutionName: { type: 'string' },
                         institutionType: { type: 'string', enum: ['HIGH_SCHOOL', 'UNIVERSITY', 'COLLEGE', 'TVET'] },
                         programmeOrCourse: { type: 'string' },
-                        admissionYear: { type: 'integer' }
+                        admissionYear: { type: 'integer' },
+                        currentResidence: { type: 'string' },
+                        whoLivesWith: { type: 'string' }
+                    }
+                },
+                UpdateProfileRequest: {
+                    type: 'object',
+                    properties: {
+                        fullName: { type: 'string' },
+                        dateOfBirth: { type: 'string', format: 'date' },
+                        gender: { type: 'string', enum: ['MALE', 'FEMALE', 'OTHER'] },
+                        nationalIdNumber: { type: 'string' },
+                        passportNumber: { type: 'string' },
+                        countyId: { type: 'string', format: 'uuid' },
+                        subCountyId: { type: 'string', format: 'uuid' },
+                        wardId: { type: 'string', format: 'uuid' },
+                        institutionName: { type: 'string' },
+                        institutionType: { type: 'string', enum: ['HIGH_SCHOOL', 'UNIVERSITY', 'COLLEGE', 'TVET'] },
+                        programmeOrCourse: { type: 'string' },
+                        admissionYear: { type: 'integer' },
+                        currentResidence: { type: 'string' },
+                        whoLivesWith: { type: 'string' }
                     }
                 },
                 CreateDraftRequest: {
@@ -71,7 +92,32 @@ const options = {
                         outstandingFeesBalance: { type: 'number' },
                         hardshipNarrative: { type: 'string' },
                         currentYearOfStudy: { type: 'string' },
-                        modeOfSponsorship: { type: 'array', items: { type: 'string' } }
+                        modeOfSponsorship: { type: 'array', items: { type: 'string' } },
+                        howSupportingEducation: { type: 'array', items: { type: 'string' } },
+                        currentFeeSituation: { type: 'string' },
+                        isFeesAffectingStudies: { type: 'boolean' },
+                        hasBeenSentHome: { type: 'boolean' },
+                        hasMissedExamsOrClasses: { type: 'boolean' },
+                        difficultiesFaced: { type: 'array', items: { type: 'string' } },
+                        goalForAcademicYear: { type: 'string' },
+                        referralSource: { type: 'string' }
+                    }
+                },
+                UpdateDraftRequest: {
+                    type: 'object',
+                    properties: {
+                        outstandingFeesBalance: { type: 'number' },
+                        hardshipNarrative: { type: 'string' },
+                        currentYearOfStudy: { type: 'string' },
+                        modeOfSponsorship: { type: 'array', items: { type: 'string' } },
+                        howSupportingEducation: { type: 'array', items: { type: 'string' } },
+                        currentFeeSituation: { type: 'string' },
+                        isFeesAffectingStudies: { type: 'boolean' },
+                        hasBeenSentHome: { type: 'boolean' },
+                        hasMissedExamsOrClasses: { type: 'boolean' },
+                        difficultiesFaced: { type: 'array', items: { type: 'string' } },
+                        goalForAcademicYear: { type: 'string' },
+                        referralSource: { type: 'string' }
                     }
                 },
                 BulkUpdateRequest: {

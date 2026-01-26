@@ -16,6 +16,45 @@ import { ApplicationStatus } from '@prisma/client';
  *     responses:
  *       200:
  *         description: List of applications
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: county
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: institution
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: educationLevel
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: submittedAfter
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: submittedBefore
+ *         schema:
+ *           type: string
+ *           format: date
  */
 export const listApplications = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -215,21 +254,6 @@ export const bulkUpdate = async (req: Request, res: Response): Promise<void> => 
  *         schema:
  *           type: string
  *           format: date
- *     parameters:
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *       - in: query
- *         name: submittedAfter
- *         schema:
- *           type: string
- *           format: date
- *       - in: query
- *         name: submittedBefore
- *         schema:
- *           type: string
- *           format: date
  */
 export const exportApplications = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -305,6 +329,12 @@ export const getStudentOverview = async (req: Request, res: Response): Promise<v
  *     responses:
  *       200:
  *         description: List of applications
+ *     parameters:
+ *       - in: path
+ *         name: profileId
+ *         required: true
+ *         schema:
+ *           type: string
  */
 export const getStudentApplications = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -340,6 +370,12 @@ export const getStudentApplications = async (req: Request, res: Response): Promi
  *     responses:
  *       200:
  *         description: List of documents
+ *     parameters:
+ *       - in: path
+ *         name: profileId
+ *         required: true
+ *         schema:
+ *           type: string
  *     parameters:
  *       - in: path
  *         name: profileId
@@ -387,6 +423,12 @@ export const getStudentDocuments = async (req: Request, res: Response): Promise<
  *         required: true
  *         schema:
  *           type: string
+ *     parameters:
+ *       - in: path
+ *         name: profileId
+ *         required: true
+ *         schema:
+ *           type: string
  */
 export const getStudentTimeline = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -427,9 +469,6 @@ export const getStudentTimeline = async (req: Request, res: Response): Promise<v
  *         required: true
  *         schema:
  *           type: string
- *     responses:
- *       200:
- *         description: Search results
  *       - in: query
  *         name: page
  *         schema:
@@ -438,6 +477,9 @@ export const getStudentTimeline = async (req: Request, res: Response): Promise<v
  *         name: limit
  *         schema:
  *           type: integer
+ *     responses:
+ *       200:
+ *         description: Search results
  */
 export const searchStudents = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -485,12 +527,15 @@ export const searchStudents = async (req: Request, res: Response): Promise<void>
  *             type: object
  *             required:
  *               - applicationId
- *               - content
+ *               - noteText
  *             properties:
  *               applicationId:
  *                 type: string
- *               content:
+ *               noteText:
  *                 type: string
+ *               isPrivate:
+ *                 type: boolean
+ *                 default: true
  *     responses:
  *       201:
  *         description: Note added successfully
@@ -547,12 +592,6 @@ export const addNote = async (req: Request, res: Response): Promise<void> => {
  *     responses:
  *       200:
  *         description: Note updated
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
  */
 export const updateNote = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -598,12 +637,6 @@ export const updateNote = async (req: Request, res: Response): Promise<void> => 
  *     responses:
  *       200:
  *         description: Note deleted
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
  */
 export const deleteNote = async (req: Request, res: Response): Promise<void> => {
     try {
