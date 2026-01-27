@@ -29,7 +29,23 @@ ensureUploadDir();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-    origin: process.env.CORS_ORIGIN?.split(',') || '*',
+    origin: (origin, callback) => {
+        const allowedOrigins = process.env.CORS_ORIGIN?.split(',').map(o => o.trim()) || [];
+
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        // If wildcard is allowed, allow all
+        if (allowedOrigins.includes('*')) {
+            return callback(null, true);
+        }
+
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
 }));
 
