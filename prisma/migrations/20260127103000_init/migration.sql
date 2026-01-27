@@ -1,0 +1,381 @@
+-- CreateEnum
+CREATE TYPE "UserRole" AS ENUM ('STUDENT', 'ADMIN', 'BOARD');
+
+-- CreateEnum
+CREATE TYPE "ApplicationStatus" AS ENUM ('DRAFT', 'PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'DISBURSED');
+
+-- CreateEnum
+CREATE TYPE "EducationLevel" AS ENUM ('HIGH_SCHOOL', 'UNIVERSITY', 'COLLEGE', 'TVET');
+
+-- CreateEnum
+CREATE TYPE "ProfileDocumentType" AS ENUM ('NATIONAL_ID', 'PASSPORT', 'KCSE_CERT', 'ADMISSION_LETTER', 'STUDENT_ID', 'TRANSCRIPT');
+
+-- CreateEnum
+CREATE TYPE "ApplicationDocumentType" AS ENUM ('FEE_STRUCTURE', 'BALANCE_STATEMENT', 'SUPPORT_LETTER', 'OTHER_EVIDENCE');
+
+-- CreateTable
+CREATE TABLE "users" (
+    "id" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
+    "role" "UserRole" NOT NULL DEFAULT 'STUDENT',
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "deletedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "student_profiles" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "fullName" TEXT NOT NULL,
+    "dateOfBirth" TIMESTAMP(3) NOT NULL,
+    "gender" TEXT NOT NULL,
+    "ageRange" TEXT,
+    "nationalIdNumber" TEXT,
+    "passportNumber" TEXT,
+    "countyId" TEXT NOT NULL,
+    "subCountyId" TEXT NOT NULL,
+    "wardId" TEXT NOT NULL,
+    "currentResidence" TEXT,
+    "institutionName" TEXT NOT NULL,
+    "institutionType" "EducationLevel" NOT NULL,
+    "programmeOrCourse" TEXT NOT NULL,
+    "admissionYear" INTEGER NOT NULL,
+    "whoLivesWith" TEXT,
+    "isComplete" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "student_profiles_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "profile_documents" (
+    "id" TEXT NOT NULL,
+    "studentProfileId" TEXT NOT NULL,
+    "documentType" "ProfileDocumentType" NOT NULL,
+    "originalFilename" TEXT NOT NULL,
+    "storedFilename" TEXT NOT NULL,
+    "filePath" TEXT NOT NULL,
+    "fileSize" INTEGER NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "uploadedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "verifiedByAdmin" BOOLEAN NOT NULL DEFAULT false,
+    "verifiedAt" TIMESTAMP(3),
+    "verifiedBy" TEXT,
+
+    CONSTRAINT "profile_documents_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "applications" (
+    "id" TEXT NOT NULL,
+    "applicationNumber" TEXT NOT NULL,
+    "studentProfileId" TEXT NOT NULL,
+    "status" "ApplicationStatus" NOT NULL DEFAULT 'DRAFT',
+    "outstandingFeesBalance" DECIMAL(12,2) NOT NULL,
+    "hardshipNarrative" TEXT NOT NULL,
+    "currentYearOfStudy" TEXT NOT NULL,
+    "modeOfSponsorship" TEXT[],
+    "howSupportingEducation" TEXT[],
+    "currentFeeSituation" TEXT,
+    "isFeesAffectingStudies" BOOLEAN NOT NULL DEFAULT false,
+    "hasBeenSentHome" BOOLEAN NOT NULL DEFAULT false,
+    "hasMissedExamsOrClasses" BOOLEAN NOT NULL DEFAULT false,
+    "difficultiesFaced" TEXT[],
+    "goalForAcademicYear" TEXT,
+    "referralSource" TEXT,
+    "snapshotFullName" TEXT,
+    "snapshotDateOfBirth" TIMESTAMP(3),
+    "snapshotGender" TEXT,
+    "snapshotNationalId" TEXT,
+    "snapshotPassportNumber" TEXT,
+    "snapshotInstitution" TEXT,
+    "snapshotProgramme" TEXT,
+    "snapshotCounty" TEXT,
+    "snapshotSubCounty" TEXT,
+    "snapshotWard" TEXT,
+    "snapshotPhone" TEXT,
+    "snapshotEmail" TEXT,
+    "snapshotEducationLevel" "EducationLevel",
+    "submittedAt" TIMESTAMP(3),
+    "reviewedAt" TIMESTAMP(3),
+    "reviewedBy" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "disbursedAmount" DECIMAL(12,2),
+    "disbursedAt" TIMESTAMP(3),
+    "disbursementNotes" TEXT,
+
+    CONSTRAINT "applications_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "application_documents" (
+    "id" TEXT NOT NULL,
+    "applicationId" TEXT NOT NULL,
+    "documentType" "ApplicationDocumentType" NOT NULL,
+    "originalFilename" TEXT NOT NULL,
+    "storedFilename" TEXT NOT NULL,
+    "filePath" TEXT NOT NULL,
+    "fileSize" INTEGER NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "uploadedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "application_documents_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "application_profile_document_links" (
+    "id" TEXT NOT NULL,
+    "applicationId" TEXT NOT NULL,
+    "profileDocumentId" TEXT NOT NULL,
+    "linkedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "application_profile_document_links_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "application_status_history" (
+    "id" TEXT NOT NULL,
+    "applicationId" TEXT NOT NULL,
+    "previousStatus" "ApplicationStatus",
+    "newStatus" "ApplicationStatus" NOT NULL,
+    "changedBy" TEXT NOT NULL,
+    "changedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "reason" TEXT,
+    "autoGenerated" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "application_status_history_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "admin_notes" (
+    "id" TEXT NOT NULL,
+    "applicationId" TEXT NOT NULL,
+    "adminId" TEXT NOT NULL,
+    "noteText" TEXT NOT NULL,
+    "isPrivate" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
+
+    CONSTRAINT "admin_notes_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "data_consent_logs" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "ipAddress" TEXT NOT NULL,
+    "consentVersion" TEXT NOT NULL,
+    "userAgent" TEXT,
+    "consentedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "data_consent_logs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "counties" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "counties_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "sub_counties" (
+    "id" TEXT NOT NULL,
+    "countyId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "sub_counties_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "wards" (
+    "id" TEXT NOT NULL,
+    "subCountyId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "wards_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_phone_key" ON "users"("phone");
+
+-- CreateIndex
+CREATE INDEX "users_email_idx" ON "users"("email");
+
+-- CreateIndex
+CREATE INDEX "users_phone_idx" ON "users"("phone");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "student_profiles_userId_key" ON "student_profiles"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "student_profiles_nationalIdNumber_key" ON "student_profiles"("nationalIdNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "student_profiles_passportNumber_key" ON "student_profiles"("passportNumber");
+
+-- CreateIndex
+CREATE INDEX "student_profiles_nationalIdNumber_idx" ON "student_profiles"("nationalIdNumber");
+
+-- CreateIndex
+CREATE INDEX "student_profiles_passportNumber_idx" ON "student_profiles"("passportNumber");
+
+-- CreateIndex
+CREATE INDEX "student_profiles_countyId_idx" ON "student_profiles"("countyId");
+
+-- CreateIndex
+CREATE INDEX "student_profiles_institutionType_idx" ON "student_profiles"("institutionType");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "profile_documents_storedFilename_key" ON "profile_documents"("storedFilename");
+
+-- CreateIndex
+CREATE INDEX "profile_documents_studentProfileId_idx" ON "profile_documents"("studentProfileId");
+
+-- CreateIndex
+CREATE INDEX "profile_documents_documentType_idx" ON "profile_documents"("documentType");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "applications_applicationNumber_key" ON "applications"("applicationNumber");
+
+-- CreateIndex
+CREATE INDEX "applications_status_idx" ON "applications"("status");
+
+-- CreateIndex
+CREATE INDEX "applications_studentProfileId_idx" ON "applications"("studentProfileId");
+
+-- CreateIndex
+CREATE INDEX "applications_submittedAt_idx" ON "applications"("submittedAt");
+
+-- CreateIndex
+CREATE INDEX "applications_outstandingFeesBalance_idx" ON "applications"("outstandingFeesBalance");
+
+-- CreateIndex
+CREATE INDEX "applications_studentProfileId_submittedAt_idx" ON "applications"("studentProfileId", "submittedAt" DESC);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "application_documents_storedFilename_key" ON "application_documents"("storedFilename");
+
+-- CreateIndex
+CREATE INDEX "application_documents_applicationId_idx" ON "application_documents"("applicationId");
+
+-- CreateIndex
+CREATE INDEX "application_documents_documentType_idx" ON "application_documents"("documentType");
+
+-- CreateIndex
+CREATE INDEX "application_profile_document_links_applicationId_idx" ON "application_profile_document_links"("applicationId");
+
+-- CreateIndex
+CREATE INDEX "application_profile_document_links_profileDocumentId_idx" ON "application_profile_document_links"("profileDocumentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "application_profile_document_links_applicationId_profileDoc_key" ON "application_profile_document_links"("applicationId", "profileDocumentId");
+
+-- CreateIndex
+CREATE INDEX "application_status_history_applicationId_idx" ON "application_status_history"("applicationId");
+
+-- CreateIndex
+CREATE INDEX "application_status_history_changedAt_idx" ON "application_status_history"("changedAt");
+
+-- CreateIndex
+CREATE INDEX "admin_notes_applicationId_idx" ON "admin_notes"("applicationId");
+
+-- CreateIndex
+CREATE INDEX "admin_notes_adminId_idx" ON "admin_notes"("adminId");
+
+-- CreateIndex
+CREATE INDEX "data_consent_logs_userId_idx" ON "data_consent_logs"("userId");
+
+-- CreateIndex
+CREATE INDEX "data_consent_logs_consentedAt_idx" ON "data_consent_logs"("consentedAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "counties_name_key" ON "counties"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "counties_code_key" ON "counties"("code");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "sub_counties_code_key" ON "sub_counties"("code");
+
+-- CreateIndex
+CREATE INDEX "sub_counties_countyId_idx" ON "sub_counties"("countyId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "sub_counties_countyId_name_key" ON "sub_counties"("countyId", "name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "wards_code_key" ON "wards"("code");
+
+-- CreateIndex
+CREATE INDEX "wards_subCountyId_idx" ON "wards"("subCountyId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "wards_subCountyId_name_key" ON "wards"("subCountyId", "name");
+
+-- AddForeignKey
+ALTER TABLE "student_profiles" ADD CONSTRAINT "student_profiles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "student_profiles" ADD CONSTRAINT "student_profiles_countyId_fkey" FOREIGN KEY ("countyId") REFERENCES "counties"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "student_profiles" ADD CONSTRAINT "student_profiles_subCountyId_fkey" FOREIGN KEY ("subCountyId") REFERENCES "sub_counties"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "student_profiles" ADD CONSTRAINT "student_profiles_wardId_fkey" FOREIGN KEY ("wardId") REFERENCES "wards"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "profile_documents" ADD CONSTRAINT "profile_documents_studentProfileId_fkey" FOREIGN KEY ("studentProfileId") REFERENCES "student_profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "applications" ADD CONSTRAINT "applications_studentProfileId_fkey" FOREIGN KEY ("studentProfileId") REFERENCES "student_profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "application_documents" ADD CONSTRAINT "application_documents_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "application_profile_document_links" ADD CONSTRAINT "application_profile_document_links_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "application_profile_document_links" ADD CONSTRAINT "application_profile_document_links_profileDocumentId_fkey" FOREIGN KEY ("profileDocumentId") REFERENCES "profile_documents"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "application_status_history" ADD CONSTRAINT "application_status_history_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "application_status_history" ADD CONSTRAINT "application_status_history_changedBy_fkey" FOREIGN KEY ("changedBy") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "admin_notes" ADD CONSTRAINT "admin_notes_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "admin_notes" ADD CONSTRAINT "admin_notes_adminId_fkey" FOREIGN KEY ("adminId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "data_consent_logs" ADD CONSTRAINT "data_consent_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "sub_counties" ADD CONSTRAINT "sub_counties_countyId_fkey" FOREIGN KEY ("countyId") REFERENCES "counties"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "wards" ADD CONSTRAINT "wards_subCountyId_fkey" FOREIGN KEY ("subCountyId") REFERENCES "sub_counties"("id") ON DELETE CASCADE ON UPDATE CASCADE;
