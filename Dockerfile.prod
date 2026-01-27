@@ -59,6 +59,9 @@ COPY --from=builder /app/src ./src
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
+# Fix ownership of all files for non-root user
+RUN chown -R appuser:appgroup /app
+
 # Switch to non-root user
 USER appuser
 
