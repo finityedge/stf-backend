@@ -47,6 +47,9 @@ COPY prisma ./prisma/
 # Install ONLY production dependencies
 RUN npm ci --only=production
 
+# Install TypeScript and ts-node for seeding
+RUN npm install -g typescript ts-node
+
 # Copy built artifacts from builder
 COPY --from=builder /app/dist ./dist
 # Copy source code for Swagger annotations
