@@ -26,6 +26,9 @@ const PORT = process.env.PORT || 3000;
 // Ensure upload directory exists
 ensureUploadDir();
 
+// Trust proxy - required when behind reverse proxy (Caddy) for rate limiting
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 app.use(cors({

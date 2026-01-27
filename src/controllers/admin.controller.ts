@@ -376,12 +376,6 @@ export const getStudentApplications = async (req: Request, res: Response): Promi
  *         required: true
  *         schema:
  *           type: string
- *     parameters:
- *       - in: path
- *         name: profileId
- *         required: true
- *         schema:
- *           type: string
  */
 export const getStudentDocuments = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -417,12 +411,6 @@ export const getStudentDocuments = async (req: Request, res: Response): Promise<
  *     responses:
  *       200:
  *         description: Student timeline events
- *     parameters:
- *       - in: path
- *         name: profileId
- *         required: true
- *         schema:
- *           type: string
  *     parameters:
  *       - in: path
  *         name: profileId
@@ -539,13 +527,6 @@ export const searchStudents = async (req: Request, res: Response): Promise<void>
  *     responses:
  *       201:
  *         description: Note added successfully
- *     parameters:
- *       - in: path
- *         name: id
- *         required: false
- *         description: Optional ID if adding via /applications/:id/notes
- *         schema:
- *           type: string
  */
 export const addNote = async (req: Request, res: Response): Promise<void> => {
     try {

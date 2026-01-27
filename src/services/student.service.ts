@@ -225,9 +225,7 @@ export class StudentService {
             data[field] !== null && data[field] !== undefined && data[field] !== ''
         );
 
-        const hasIdentification = !!(data.nationalIdNumber || data.passportNumber);
-
-        return hasAllRequired && hasIdentification;
+        return hasAllRequired;
     }
 
     // ==================== PROFILE COMPLETENESS ====================
@@ -279,12 +277,8 @@ export class StudentService {
             }
         }
 
-        // Check identification
-        if (!profile.nationalIdNumber && !profile.passportNumber) {
-            missingFields.push('National ID or Passport');
-        } else {
-            filledCount++;
-        }
+        // Removed: Check identification is no longer required
+        // ID fields are optional now
 
         // Check required documents
         const requiredDocumentTypes: ProfileDocumentType[] = ['NATIONAL_ID', 'ADMISSION_LETTER'];

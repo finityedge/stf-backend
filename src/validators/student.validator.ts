@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { EducationLevel, ProfileDocumentType, ApplicationDocumentType } from '@prisma/client';
 import {
-    validateKenyanNationalId,
     validateKenyanPhone,
     countWords,
     validateFeeBalance
@@ -19,10 +18,7 @@ export const createProfileSchema = z.object({
         gender: z.enum(['MALE', 'FEMALE', 'OTHER'], {
             errorMap: () => ({ message: 'Gender must be MALE, FEMALE, or OTHER' })
         }),
-        nationalIdNumber: z.string().optional().refine(
-            (val) => !val || validateKenyanNationalId(val),
-            { message: 'Invalid Kenyan National ID format. Must be exactly 8 digits.' }
-        ),
+        nationalIdNumber: z.string().optional(),
         passportNumber: z.string().min(6).max(20).optional(),
         countyId: z.string().uuid('Invalid county ID'),
         subCountyId: z.string().uuid('Invalid sub-county ID'),
@@ -33,10 +29,7 @@ export const createProfileSchema = z.object({
         programmeOrCourse: z.string().min(2, 'Programme/course is required').max(200),
         admissionYear: z.number().int().min(2000).max(new Date().getFullYear() + 1),
         whoLivesWith: z.string().max(500).optional(),
-    }).refine(
-        (data) => data.nationalIdNumber || data.passportNumber,
-        { message: 'Either National ID or Passport Number is required', path: ['nationalIdNumber'] }
-    ),
+    }),
 });
 
 export const updateProfileSchema = z.object({
@@ -47,10 +40,7 @@ export const updateProfileSchema = z.object({
             { message: 'Invalid date format. Use ISO date format (YYYY-MM-DD)' }
         ).optional(),
         gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
-        nationalIdNumber: z.string().optional().refine(
-            (val) => !val || validateKenyanNationalId(val),
-            { message: 'Invalid Kenyan National ID format. Must be exactly 8 digits.' }
-        ),
+        nationalIdNumber: z.string().optional(),
         passportNumber: z.string().min(6).max(20).optional(),
         countyId: z.string().uuid().optional(),
         subCountyId: z.string().uuid().optional(),
