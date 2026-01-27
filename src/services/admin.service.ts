@@ -40,7 +40,10 @@ export class AdminService {
             sortOrder = 'desc',
         } = params;
 
-        const skip = (page - 1) * limit;
+        const pageNumber = Number(page) || 1;
+        const limitNumber = Number(limit) || 20;
+
+        const skip = (pageNumber - 1) * limitNumber;
 
         // Build where clause
         const where: Prisma.ApplicationWhereInput = {};
@@ -110,7 +113,7 @@ export class AdminService {
             prisma.application.findMany({
                 where,
                 skip,
-                take: limit,
+                take: limitNumber,
                 orderBy,
                 include: {
                     studentProfile: {
