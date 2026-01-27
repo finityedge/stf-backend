@@ -48,7 +48,7 @@ COPY prisma ./prisma/
 RUN npm ci --only=production
 
 # Install TypeScript and ts-node for seeding
-RUN npm install -g typescript ts-node
+RUN npm install -g typescript ts-node && npm install --no-save @types/bcrypt @types/node
 
 # Copy built artifacts from builder
 COPY --from=builder /app/dist ./dist
