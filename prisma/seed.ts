@@ -7,6 +7,7 @@ import {
     ApplicationDocumentType,
     Prisma
 } from '@prisma/client';
+// @ts-ignore
 import bcrypt from 'bcrypt';
 // import { v4 as uuidv4 } from 'uuid'; // Removed unused import
 
