@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EducationLevel, ProfileDocumentType, ApplicationDocumentType } from '@prisma/client';
+import { EducationLevel, ProfileDocumentType, ApplicationDocumentType, HouseholdIncomeRange, OrphanStatus, WhoLivesWith } from '@prisma/client';
 import {
     validateKenyanPhone,
     countWords,
@@ -19,7 +19,7 @@ export const createProfileSchema = z.object({
             errorMap: () => ({ message: 'Gender must be MALE, FEMALE, or OTHER' })
         }),
         nationalIdNumber: z.string().optional(),
-        passportNumber: z.string().min(6).max(20).optional(),
+        passportNumber: z.string().transform(val => val === '' ? undefined : val).pipe(z.string().min(6).max(20).optional()),
         countyId: z.string().uuid('Invalid county ID'),
         subCountyId: z.string().uuid('Invalid sub-county ID'),
         wardId: z.string().uuid('Invalid ward ID'),
@@ -28,7 +28,31 @@ export const createProfileSchema = z.object({
         institutionType: z.nativeEnum(EducationLevel),
         programmeOrCourse: z.string().min(2, 'Programme/course is required').max(200),
         admissionYear: z.number().int().min(2000).max(new Date().getFullYear() + 1),
-        whoLivesWith: z.string().max(500).optional(),
+        institutionId: z.string().uuid('Invalid institution ID').optional(),
+
+        // Family & Guardian
+        whoLivesWith: z.nativeEnum(WhoLivesWith).optional(),
+        whoLivesWithOther: z.string().max(200).optional(),
+        guardianName: z.string().max(100).optional(),
+        guardianPhone: z.string().max(20).optional(),
+        guardianOccupation: z.string().max(200).optional(),
+        householdIncomeRange: z.nativeEnum(HouseholdIncomeRange).optional(),
+        numberOfDependents: z.number().int().min(0).max(50).optional(),
+        numberOfSiblings: z.number().int().min(0).max(30).optional(),
+        siblingsInSchool: z.number().int().min(0).max(30).optional(),
+
+        // Contact
+        phoneNumber: z.string().max(20).optional(),
+        emergencyContactName: z.string().max(100).optional(),
+        emergencyContactPhone: z.string().max(20).optional(),
+
+        // Vulnerability & Background
+        orphanStatus: z.nativeEnum(OrphanStatus).optional(),
+        disabilityStatus: z.boolean().optional().default(false),
+        disabilityType: z.string().max(200).optional(),
+        kcseGrade: z.string().max(10).optional(),
+        previousScholarship: z.boolean().optional().default(false),
+        previousScholarshipDetails: z.string().max(500).optional(),
     }),
 });
 
@@ -41,7 +65,7 @@ export const updateProfileSchema = z.object({
         ).optional(),
         gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
         nationalIdNumber: z.string().optional(),
-        passportNumber: z.string().min(6).max(20).optional(),
+        passportNumber: z.string().transform(val => val === '' ? undefined : val).pipe(z.string().min(6).max(20).optional()),
         countyId: z.string().uuid().optional(),
         subCountyId: z.string().uuid().optional(),
         wardId: z.string().uuid().optional(),
@@ -50,7 +74,31 @@ export const updateProfileSchema = z.object({
         institutionType: z.nativeEnum(EducationLevel).optional(),
         programmeOrCourse: z.string().min(2).max(200).optional(),
         admissionYear: z.number().int().min(2000).max(new Date().getFullYear() + 1).optional(),
-        whoLivesWith: z.string().max(500).optional(),
+        institutionId: z.string().uuid().optional(),
+
+        // Family & Guardian
+        whoLivesWith: z.nativeEnum(WhoLivesWith).optional(),
+        whoLivesWithOther: z.string().max(200).optional(),
+        guardianName: z.string().max(100).optional(),
+        guardianPhone: z.string().max(20).optional(),
+        guardianOccupation: z.string().max(200).optional(),
+        householdIncomeRange: z.nativeEnum(HouseholdIncomeRange).optional(),
+        numberOfDependents: z.number().int().min(0).max(50).optional(),
+        numberOfSiblings: z.number().int().min(0).max(30).optional(),
+        siblingsInSchool: z.number().int().min(0).max(30).optional(),
+
+        // Contact
+        phoneNumber: z.string().max(20).optional(),
+        emergencyContactName: z.string().max(100).optional(),
+        emergencyContactPhone: z.string().max(20).optional(),
+
+        // Vulnerability & Background
+        orphanStatus: z.nativeEnum(OrphanStatus).optional(),
+        disabilityStatus: z.boolean().optional(),
+        disabilityType: z.string().max(200).optional(),
+        kcseGrade: z.string().max(10).optional(),
+        previousScholarship: z.boolean().optional(),
+        previousScholarshipDetails: z.string().max(500).optional(),
     }),
 });
 
@@ -95,6 +143,20 @@ export const createDraftSchema = z.object({
         difficultiesFaced: z.array(z.string()).optional().default([]),
         goalForAcademicYear: z.string().max(1000).optional(),
         referralSource: z.string().max(200).optional(),
+
+        // Enhanced fields (Phase 2)
+        gpa: z.string().max(10).optional(),
+        expectedGraduationDate: z.string().refine(
+            (val) => !isNaN(Date.parse(val)),
+            { message: 'Invalid date format' }
+        ).optional(),
+        totalAnnualFeeAmount: z.number().positive().optional(),
+        remainingSemesters: z.number().int().min(1).max(20).optional(),
+        appliedToOtherScholarships: z.boolean().optional().default(false),
+        otherScholarshipsDetails: z.string().max(500).optional(),
+        communityInvolvement: z.string().max(2000).optional(),
+        careerAspirations: z.string().max(2000).optional(),
+        givingBackPlan: z.string().max(2000).optional(),
     }),
 });
 
@@ -124,6 +186,20 @@ export const updateDraftSchema = z.object({
         difficultiesFaced: z.array(z.string()).optional(),
         goalForAcademicYear: z.string().max(1000).optional(),
         referralSource: z.string().max(200).optional(),
+
+        // Enhanced fields (Phase 2)
+        gpa: z.string().max(10).optional(),
+        expectedGraduationDate: z.string().refine(
+            (val) => !isNaN(Date.parse(val)),
+            { message: 'Invalid date format' }
+        ).optional(),
+        totalAnnualFeeAmount: z.number().positive().optional(),
+        remainingSemesters: z.number().int().min(1).max(20).optional(),
+        appliedToOtherScholarships: z.boolean().optional(),
+        otherScholarshipsDetails: z.string().max(500).optional(),
+        communityInvolvement: z.string().max(2000).optional(),
+        careerAspirations: z.string().max(2000).optional(),
+        givingBackPlan: z.string().max(2000).optional(),
     }),
 });
 

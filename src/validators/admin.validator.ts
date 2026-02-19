@@ -93,6 +93,7 @@ export const addNoteSchema = z.object({
     body: z.object({
         noteText: z.string().min(1, 'Note content is required').max(5000),
         isPrivate: z.boolean().optional().default(true),
+        section: z.enum(['financial', 'academic', 'vulnerability', 'general']).optional(),
     }),
 });
 
@@ -137,5 +138,20 @@ export const analyticsFilterSchema = z.object({
     query: z.object({
         startDate: z.string().optional().transform((val) => (val ? new Date(val) : undefined)),
         endDate: z.string().optional().transform((val) => (val ? new Date(val) : undefined)),
+    }),
+});
+
+// ==================== SCORING SCHEMA ====================
+
+export const scoreApplicationSchema = z.object({
+    params: z.object({
+        id: z.string().uuid('Invalid application ID'),
+    }),
+    body: z.object({
+        financialNeed: z.number().int().min(1).max(5),
+        academicMerit: z.number().int().min(1).max(5),
+        communityImpact: z.number().int().min(1).max(5),
+        vulnerability: z.number().int().min(1).max(5),
+        comments: z.string().max(2000).optional(),
     }),
 });

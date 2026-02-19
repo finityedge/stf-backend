@@ -1,4 +1,4 @@
-import { ApplicationStatus, EducationLevel, ProfileDocumentType, ApplicationDocumentType } from '@prisma/client';
+import { ApplicationStatus, EducationLevel, ProfileDocumentType, ApplicationDocumentType, HouseholdIncomeRange, OrphanStatus, WhoLivesWith } from '@prisma/client';
 
 // ==================== GENERIC API RESPONSES ====================
 
@@ -110,6 +110,15 @@ export interface CreateDraftRequest {
     difficultiesFaced?: string[];
     goalForAcademicYear?: string;
     referralSource?: string;
+    gpa?: string;
+    expectedGraduationDate?: string;
+    totalAnnualFeeAmount?: number;
+    remainingSemesters?: number;
+    appliedToOtherScholarships?: boolean;
+    otherScholarshipsDetails?: string;
+    communityInvolvement?: string;
+    careerAspirations?: string;
+    givingBackPlan?: string;
 }
 
 export interface UpdateDraftRequest extends Partial<CreateDraftRequest> { }
@@ -118,7 +127,7 @@ export interface UpdateDraftRequest extends Partial<CreateDraftRequest> { }
 
 export interface UpdateProfileRequest {
     fullName?: string;
-    dateOfBirth?: string; // ISO date string
+    dateOfBirth?: string;
     gender?: string;
     nationalIdNumber?: string;
     passportNumber?: string;
@@ -130,12 +139,30 @@ export interface UpdateProfileRequest {
     institutionType?: EducationLevel;
     programmeOrCourse?: string;
     admissionYear?: number;
-    whoLivesWith?: string;
+    institutionId?: string;
+    whoLivesWith?: WhoLivesWith;
+    whoLivesWithOther?: string;
+    guardianName?: string;
+    guardianPhone?: string;
+    guardianOccupation?: string;
+    householdIncomeRange?: HouseholdIncomeRange;
+    numberOfDependents?: number;
+    numberOfSiblings?: number;
+    siblingsInSchool?: number;
+    phoneNumber?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    orphanStatus?: OrphanStatus;
+    disabilityStatus?: boolean;
+    disabilityType?: string;
+    kcseGrade?: string;
+    previousScholarship?: boolean;
+    previousScholarshipDetails?: string;
 }
 
 export interface CreateProfileRequest {
     fullName: string;
-    dateOfBirth: string; // ISO date string
+    dateOfBirth: string;
     gender: string;
     nationalIdNumber?: string;
     passportNumber?: string;
@@ -147,7 +174,25 @@ export interface CreateProfileRequest {
     institutionType: EducationLevel;
     programmeOrCourse: string;
     admissionYear: number;
-    whoLivesWith?: string;
+    institutionId?: string;
+    whoLivesWith?: WhoLivesWith;
+    whoLivesWithOther?: string;
+    guardianName?: string;
+    guardianPhone?: string;
+    guardianOccupation?: string;
+    householdIncomeRange?: HouseholdIncomeRange;
+    numberOfDependents?: number;
+    numberOfSiblings?: number;
+    siblingsInSchool?: number;
+    phoneNumber?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    orphanStatus?: OrphanStatus;
+    disabilityStatus?: boolean;
+    disabilityType?: string;
+    kcseGrade?: string;
+    previousScholarship?: boolean;
+    previousScholarshipDetails?: string;
 }
 
 // ==================== DOCUMENT UPLOAD ====================

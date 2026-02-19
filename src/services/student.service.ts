@@ -1,9 +1,13 @@
 import prisma from '../config/database';
+import configService from './config.service';
 import {
     EducationLevel,
     ApplicationStatus,
     ProfileDocumentType,
     ApplicationDocumentType,
+    HouseholdIncomeRange,
+    OrphanStatus,
+    WhoLivesWith,
     Prisma
 } from '@prisma/client';
 
@@ -60,7 +64,25 @@ export class StudentService {
         institutionType: EducationLevel;
         programmeOrCourse: string;
         admissionYear: number;
-        whoLivesWith?: string;
+        institutionId?: string;
+        whoLivesWith?: WhoLivesWith;
+        whoLivesWithOther?: string;
+        guardianName?: string;
+        guardianPhone?: string;
+        guardianOccupation?: string;
+        householdIncomeRange?: HouseholdIncomeRange;
+        numberOfDependents?: number;
+        numberOfSiblings?: number;
+        siblingsInSchool?: number;
+        phoneNumber?: string;
+        emergencyContactName?: string;
+        emergencyContactPhone?: string;
+        orphanStatus?: OrphanStatus;
+        disabilityStatus?: boolean;
+        disabilityType?: string;
+        kcseGrade?: string;
+        previousScholarship?: boolean;
+        previousScholarshipDetails?: string;
     }) {
         // Check if profile already exists
         const existingProfile = await prisma.studentProfile.findUnique({
@@ -133,7 +155,25 @@ export class StudentService {
         institutionType: EducationLevel;
         programmeOrCourse: string;
         admissionYear: number;
-        whoLivesWith?: string;
+        institutionId?: string;
+        whoLivesWith?: WhoLivesWith;
+        whoLivesWithOther?: string;
+        guardianName?: string;
+        guardianPhone?: string;
+        guardianOccupation?: string;
+        householdIncomeRange?: HouseholdIncomeRange;
+        numberOfDependents?: number;
+        numberOfSiblings?: number;
+        siblingsInSchool?: number;
+        phoneNumber?: string;
+        emergencyContactName?: string;
+        emergencyContactPhone?: string;
+        orphanStatus?: OrphanStatus;
+        disabilityStatus?: boolean;
+        disabilityType?: string;
+        kcseGrade?: string;
+        previousScholarship?: boolean;
+        previousScholarshipDetails?: string;
     }>) {
         const profile = await prisma.studentProfile.findUnique({
             where: { userId },
@@ -219,6 +259,10 @@ export class StudentService {
             'institutionType',
             'programmeOrCourse',
             'admissionYear',
+            'phoneNumber',
+            'emergencyContactName',
+            'emergencyContactPhone',
+            'whoLivesWith',
         ];
 
         const hasAllRequired = requiredFields.every(field =>
@@ -263,6 +307,10 @@ export class StudentService {
             { name: 'institutionType', label: 'Education Level' },
             { name: 'programmeOrCourse', label: 'Programme/Course' },
             { name: 'admissionYear', label: 'Admission Year' },
+            { name: 'phoneNumber', label: 'Phone Number' },
+            { name: 'emergencyContactName', label: 'Emergency Contact Name' },
+            { name: 'emergencyContactPhone', label: 'Emergency Contact Phone' },
+            { name: 'whoLivesWith', label: 'Who Student Lives With' },
         ];
 
         const missingFields: string[] = [];
@@ -461,6 +509,18 @@ export class StudentService {
      * Check if student is eligible to create new application
      */
     async checkEligibility(userId: string): Promise<EligibilityResponse> {
+        // Check if there is an active application period
+        const config = await configService.getCurrentConfig();
+        if (!config.applicationWindowOpen) {
+            return {
+                canApply: false,
+                reason: 'The application window is currently closed. Please check back later.',
+                profileCompleteness: 0,
+                missingFields: [],
+                hasActiveApplication: false,
+            };
+        }
+
         const profile = await prisma.studentProfile.findUnique({
             where: { userId },
             include: {
@@ -551,6 +611,11 @@ export class StudentService {
         const applicationCount = await prisma.application.count();
         const applicationNumber = generateApplicationNumber(applicationCount + 1);
 
+        // Get the active application period to link to this application
+        const activePeriod = await prisma.applicationPeriod.findFirst({
+            where: { isActive: true },
+        });
+
         // Create draft application
         const application = await prisma.$transaction(async (tx) => {
             const app = await tx.application.create({
@@ -558,6 +623,7 @@ export class StudentService {
                     applicationNumber,
                     studentProfileId: profile.id,
                     status: ApplicationStatus.DRAFT,
+                    applicationPeriodId: activePeriod?.id || null,
                     outstandingFeesBalance: data.outstandingFeesBalance,
                     hardshipNarrative: data.hardshipNarrative,
                     currentYearOfStudy: data.currentYearOfStudy,
@@ -570,6 +636,16 @@ export class StudentService {
                     difficultiesFaced: data.difficultiesFaced || [],
                     goalForAcademicYear: data.goalForAcademicYear,
                     referralSource: data.referralSource,
+                    // Phase 2 enhanced fields
+                    gpa: data.gpa,
+                    expectedGraduationDate: data.expectedGraduationDate ? new Date(data.expectedGraduationDate) : undefined,
+                    totalAnnualFeeAmount: data.totalAnnualFeeAmount ? new Prisma.Decimal(data.totalAnnualFeeAmount) : undefined,
+                    remainingSemesters: data.remainingSemesters,
+                    appliedToOtherScholarships: data.appliedToOtherScholarships || false,
+                    otherScholarshipsDetails: data.otherScholarshipsDetails,
+                    communityInvolvement: data.communityInvolvement,
+                    careerAspirations: data.careerAspirations,
+                    givingBackPlan: data.givingBackPlan,
                 },
             });
 

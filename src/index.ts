@@ -15,6 +15,8 @@ import studentRoutes from './routes/student.routes';
 import adminRoutes from './routes/admin.routes';
 import fileRoutes from './routes/file.routes';
 import referenceRoutes from './routes/reference.routes';
+import configRoutes from './routes/config.routes';
+import notificationRoutes from './routes/notification.routes';
 
 // Load environment variables
 dotenv.config();
@@ -77,6 +79,8 @@ app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/reference', referenceRoutes);
+app.use('/api/config', configRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 404 handler
 app.use(notFoundHandler);

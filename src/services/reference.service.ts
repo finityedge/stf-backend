@@ -54,7 +54,30 @@ export class ReferenceService {
      * Get education levels
      */
     getEducationLevels() {
-        return ['HIGH_SCHOOL', 'UNIVERSITY'];
+        return ['HIGH_SCHOOL', 'UNIVERSITY', 'COLLEGE', 'TVET'];
+    }
+
+    /**
+     * Search institutions (autocomplete)
+     */
+    async searchInstitutions(query?: string, type?: string) {
+        const where: any = {};
+
+        if (query) {
+            where.name = { contains: query, mode: 'insensitive' };
+        }
+
+        if (type) {
+            where.type = type;
+        }
+
+        const institutions = await prisma.institution.findMany({
+            where,
+            orderBy: { name: 'asc' },
+            take: 50,
+        });
+
+        return institutions;
     }
 }
 

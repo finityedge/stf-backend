@@ -177,3 +177,46 @@ export const getEducationLevels = async (_req: Request, res: Response): Promise<
         });
     }
 };
+
+/**
+ * @swagger
+ * /api/reference/institutions:
+ *   get:
+ *     tags: [Reference]
+ *     summary: Search institutions (autocomplete)
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Search query for institution name
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [HIGH_SCHOOL, UNIVERSITY, COLLEGE, TVET]
+ *         description: Filter by education level
+ *     responses:
+ *       200:
+ *         description: List of matching institutions
+ * */
+export const searchInstitutions = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { q, type } = req.query;
+        const institutions = await referenceService.searchInstitutions(
+            q as string | undefined,
+            type as string | undefined
+        );
+
+        res.status(200).json({
+            success: true,
+            data: institutions,
+        });
+    } catch (error: any) {
+        logger.error('Search institutions error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to search institutions',
+        });
+    }
+};

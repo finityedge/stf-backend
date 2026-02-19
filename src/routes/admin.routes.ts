@@ -15,7 +15,14 @@ import {
     deleteNoteSchema,
     exportApplicationsSchema,
     analyticsFilterSchema,
+    scoreApplicationSchema,
 } from '../validators/admin.validator';
+import {
+    createPeriodSchema,
+    updatePeriodSchema,
+    getPeriodSchema,
+    activatePeriodSchema,
+} from '../validators/period.validator';
 
 const router = Router();
 
@@ -52,6 +59,25 @@ router.put(
     '/applications/:id/status',
     validate(updateApplicationStatusSchema),
     adminController.updateApplicationStatus
+);
+
+// ==================== APPLICATION SCORING ====================
+
+router.post(
+    '/applications/:id/scores',
+    validate(scoreApplicationSchema),
+    adminController.scoreApplication
+);
+
+router.get(
+    '/applications/:id/scores',
+    validate(getApplicationSchema),
+    adminController.getApplicationScores
+);
+
+router.get(
+    '/scoring-rubric',
+    adminController.getScoringRubric
 );
 
 // ==================== STUDENT MANAGEMENT ====================
@@ -94,8 +120,6 @@ router.post(
     adminController.addNote
 );
 
-// Note: Using :applicationId in params for consistency with REST but controller might expect noteId
-// The schema expects applicationId in params for adding note, but noteId in params for update/delete
 router.post(
     '/applications/:id/notes',
     validate(addNoteSchema),
@@ -112,6 +136,37 @@ router.delete(
     '/notes/:id',
     validate(deleteNoteSchema),
     adminController.deleteNote
+);
+
+// ==================== APPLICATION PERIODS ====================
+
+router.get(
+    '/application-periods',
+    adminController.getApplicationPeriods
+);
+
+router.post(
+    '/application-periods',
+    validate(createPeriodSchema),
+    adminController.createApplicationPeriod
+);
+
+router.put(
+    '/application-periods/:id',
+    validate(updatePeriodSchema),
+    adminController.updateApplicationPeriod
+);
+
+router.delete(
+    '/application-periods/:id',
+    validate(getPeriodSchema),
+    adminController.deleteApplicationPeriod
+);
+
+router.put(
+    '/application-periods/:id/activate',
+    validate(activatePeriodSchema),
+    adminController.activateApplicationPeriod
 );
 
 // ==================== ANALYTICS ====================
@@ -139,4 +194,25 @@ router.get(
     adminController.getDisbursementAnalytics
 );
 
+router.get(
+    '/analytics/gender',
+    adminController.getGenderAnalytics
+);
+
+router.get(
+    '/analytics/funnel',
+    adminController.getFunnelAnalytics
+);
+
+router.get(
+    '/analytics/time-to-decision',
+    adminController.getTimeToDecisionAnalytics
+);
+
+router.get(
+    '/analytics/demographics',
+    adminController.getDemographicsAnalytics
+);
+
 export default router;
+

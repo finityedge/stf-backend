@@ -352,11 +352,40 @@ export const deleteProfileDocument = async (req: Request, res: Response): Promis
  *   get:
  *     tags: [Student]
  *     summary: Check application eligibility
+ *     description: Checks whether the student can create a new application. Verifies the application window is open, profile is complete, and no active application exists.
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Eligibility status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     canApply:
+ *                       type: boolean
+ *                     reason:
+ *                       type: string
+ *                     profileCompleteness:
+ *                       type: number
+ *                     missingFields:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     hasActiveApplication:
+ *                       type: boolean
+ *                     activeApplicationId:
+ *                       type: string
+ *                       nullable: true
+ *                     activeApplicationStatus:
+ *                       type: string
+ *                       nullable: true
  */
 export const checkEligibility = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -387,6 +416,7 @@ export const checkEligibility = async (req: Request, res: Response): Promise<voi
  *   get:
  *     tags: [Student]
  *     summary: Get active application
+ *     description: Returns the student's currently active application (if any), including the linked application period.
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -424,6 +454,7 @@ export const getActiveApplication = async (req: Request, res: Response): Promise
  *   post:
  *     tags: [Student]
  *     summary: Create draft application
+ *     description: Creates a new draft application. The application is automatically linked to the currently active application period. The application window must be open.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -434,7 +465,9 @@ export const getActiveApplication = async (req: Request, res: Response): Promise
  *             $ref: '#/components/schemas/CreateDraftRequest'
  *     responses:
  *       201:
- *         description: Draft created successfully
+ *         description: Draft created successfully (includes applicationPeriodId in response)
+ *       400:
+ *         description: Not eligible (application window closed, incomplete profile, or active application exists)
  */
 export const createDraft = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -765,6 +798,7 @@ export const submitApplication = async (req: Request, res: Response): Promise<vo
  *   get:
  *     tags: [Student]
  *     summary: Get all applications
+ *     description: Returns all of the student's applications, each including the linked applicationPeriodId.
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -816,24 +850,6 @@ export const getApplication = async (req: Request, res: Response): Promise<void>
     try {
         const userId = (req as any).user!.id;
         const { id } = req.params;
-        console.log(userId);
-        // Fix: Removed console.log and just use the service
-        // Actually, the error is likely on line 819 in the file content which might correspond to a getApplication call.
-        // Wait, line 819 in file content from step 343:
-        // const application = await studentService.getApplication(userId, id); Is this the method? 
-        // Looking at file content around line 798 (getApplications/getApplication):
-        // There isn't a "getApplication" method taking two args in the visible part of step 343?
-        // Ah, "getApplication" is NOT visible in step 343 (it ends at getApplications).
-        // BUT the error log says: src/controllers/student.controller.ts:819:73 ... studentService.getApplication(userId, id);
-        // I will trust the error log and the pattern.
-        // I need to find the `getApplication` SINGLE handler.
-        // I'll search for it or just try to replace based on signature.
-        // Actually, I should probably just view the end of the file first to be safe, but speed is key.
-        // I'll assume the context is standard.
-        // Wait, I can't guess the context if I haven't seen the lines.
-        // I'll skip this chunk and do a view_file first? No, I'll try to find it via unique string.
-        // The error line 819: `const application = await studentService.getApplication(userId, id);`
-        // I'll use that as target.
         const application = await studentService.getApplication(userId, id as string);
 
         res.status(200).json({

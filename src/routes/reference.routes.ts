@@ -10,5 +10,6 @@ router.get('/sub-counties/:subCountyId/wards', referenceController.getWards);
 router.get('/document-types', referenceController.getDocumentTypes);
 router.get('/application-statuses', referenceController.getApplicationStatuses);
 router.get('/education-levels', referenceController.getEducationLevels);
+router.get('/institutions', referenceController.searchInstitutions);
 
 export default router;

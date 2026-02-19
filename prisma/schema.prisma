@@ -51,7 +51,39 @@ enum ApplicationDocumentType {
   OTHER_EVIDENCE
 }
 
-// ==================== USER & AUTHENTICATION ====================
+enum HouseholdIncomeRange {
+  BELOW_5K
+  FROM_5K_TO_15K
+  FROM_15K_TO_30K
+  ABOVE_30K
+}
+
+enum OrphanStatus {
+  BOTH_PARENTS_ALIVE
+  SINGLE_ORPHAN
+  DOUBLE_ORPHAN
+}
+
+enum WhoLivesWith {
+  BOTH_PARENTS
+  SINGLE_MOTHER
+  SINGLE_FATHER
+  GUARDIAN
+  GRANDPARENT
+  ORPHANAGE
+  SELF
+  OTHER
+}
+
+enum NotificationType {
+  STATUS_CHANGE
+  DEADLINE_REMINDER
+  APPLICATION_RECEIVED
+  WELCOME
+  GENERAL
+}
+
+// ==================== USER & AUTHENTICATION ==
 
 model User {
   id        String    @id @default(uuid())
@@ -68,6 +100,8 @@ model User {
   consentLogs    DataConsentLog[]
   adminNotes     AdminNote[]
   statusChanges  ApplicationStatusHistory[]
+  notifications  Notification[]
+  reviewScores   ReviewScore[]
 
   @@index([email])
   @@index([phone])
@@ -97,9 +131,31 @@ model StudentProfile {
   institutionType   EducationLevel
   programmeOrCourse String
   admissionYear     Int
+  institutionId     String?
   
-  // Household information (for high school students)
-  whoLivesWith      String?
+  // Family & Guardian information
+  whoLivesWith          WhoLivesWith?
+  whoLivesWithOther     String?          // Detail if whoLivesWith is OTHER
+  guardianName          String?
+  guardianPhone         String?
+  guardianOccupation    String?
+  householdIncomeRange  HouseholdIncomeRange?
+  numberOfDependents    Int?
+  numberOfSiblings      Int?
+  siblingsInSchool      Int?
+  
+  // Contact
+  phoneNumber           String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  
+  // Vulnerability & Background
+  orphanStatus              OrphanStatus?
+  disabilityStatus          Boolean        @default(false)
+  disabilityType            String?
+  kcseGrade                 String?
+  previousScholarship       Boolean        @default(false)
+  previousScholarshipDetails String?
   
   // Profile completeness
   isComplete        Boolean        @default(false)
@@ -112,6 +168,7 @@ model StudentProfile {
   county            County             @relation(fields: [countyId], references: [id])
   subCounty         SubCounty          @relation(fields: [subCountyId], references: [id])
   ward              Ward               @relation(fields: [wardId], references: [id])
+  institution       Institution?       @relation(fields: [institutionId], references: [id])
   applications      Application[]
   profileDocuments  ProfileDocument[]
 
@@ -171,6 +228,17 @@ model Application {
   goalForAcademicYear    String?           @db.Text
   referralSource         String?
   
+  // Enhanced application fields (Phase 2)
+  gpa                        String?
+  expectedGraduationDate     DateTime?
+  totalAnnualFeeAmount       Decimal?          @db.Decimal(12, 2)
+  remainingSemesters         Int?
+  appliedToOtherScholarships Boolean           @default(false)
+  otherScholarshipsDetails   String?
+  communityInvolvement       String?           @db.Text
+  careerAspirations          String?           @db.Text
+  givingBackPlan             String?           @db.Text
+  
   // Snapshot of profile data (immutable once PENDING)
   snapshotFullName       String?
   snapshotDateOfBirth    DateTime?
@@ -200,10 +268,13 @@ model Application {
 
   // Relations
   studentProfile         StudentProfile              @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  applicationPeriod      ApplicationPeriod?           @relation(fields: [applicationPeriodId], references: [id])
+  applicationPeriodId    String?
   applicationDocuments   ApplicationDocument[]
   profileDocumentLinks   ApplicationProfileDocumentLink[]
   adminNotes             AdminNote[]
   statusHistory          ApplicationStatusHistory[]
+  reviewScores           ReviewScore[]
 
   @@index([status])
   @@index([studentProfileId])
@@ -280,6 +351,7 @@ model AdminNote {
   applicationId String
   adminId       String
   noteText      String    @db.Text
+  section       String?              // e.g. "financial", "academic", "vulnerability", "general"
   isPrivate     Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -358,4 +430,88 @@ model Ward {
   @@unique([subCountyId, name])
   @@index([subCountyId])
   @@map("wards")
+}
+
+// ==================== INSTITUTION REFERENCE DATA ====================
+
+model Institution {
+  id              String         @id @default(uuid())
+  name            String         @unique
+  type            EducationLevel
+  county          String?
+  isVerified      Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+
+  // Relations
+  studentProfiles StudentProfile[]
+
+  @@index([name])
+  @@index([type])
+  @@map("institutions")
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  isRead    Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  // Relations
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+// ==================== APPLICATION PERIODS ====================
+
+model ApplicationPeriod {
+  id           String   @id @default(uuid())
+  academicYear String
+  title        String
+  description  String?  @db.Text
+  startDate    DateTime
+  endDate      DateTime
+  isActive     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([startDate, endDate])
+  @@map("application_periods")
+
+  // Relations
+  applications Application[]
+}
+
+// ==================== REVIEW SCORES ====================
+
+model ReviewScore {
+  id              String   @id @default(uuid())
+  applicationId   String
+  reviewerId      String
+  financialNeed   Int               // 1-5
+  academicMerit   Int               // 1-5
+  communityImpact Int               // 1-5
+  vulnerability   Int               // 1-5
+  overallScore    Float             // computed average
+  comments        String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  reviewer        User        @relation(fields: [reviewerId], references: [id])
+
+  @@unique([applicationId, reviewerId])  // One score per reviewer per application
+  @@index([applicationId])
+  @@index([reviewerId])
+  @@map("review_scores")
 }

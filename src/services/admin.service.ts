@@ -2,6 +2,7 @@ import prisma from '../config/database';
 import {
     ApplicationStatus,
     EducationLevel,
+    NotificationType,
     Prisma
 } from '@prisma/client';
 import {
@@ -16,6 +17,8 @@ import {
     isValidStatusTransition
 } from '../types/api.types';
 import logger from '../config/logger';
+import notificationService from './notification.service';
+import emailService from './email.service';
 
 export class AdminService {
     // ==================== APPLICATION LIST ====================
@@ -259,6 +262,43 @@ export class AdminService {
         });
 
         logger.info(`Application ${applicationId} status changed from ${application.status} to ${newStatus} by admin ${adminId}`);
+
+        // Send in-app notification and email to the student (non-blocking)
+        try {
+            const fullApp = await prisma.application.findUnique({
+                where: { id: applicationId },
+                include: {
+                    studentProfile: {
+                        include: { user: { select: { id: true, email: true } } }
+                    }
+                },
+            });
+
+            if (fullApp?.studentProfile?.user) {
+                const studentUser = fullApp.studentProfile.user;
+                const studentName = fullApp.snapshotFullName || 'Student';
+
+                // In-app notification
+                notificationService.createNotification(
+                    studentUser.id,
+                    NotificationType.STATUS_CHANGE,
+                    `Application ${fullApp.applicationNumber} Updated`,
+                    `Your application status has been changed to ${newStatus}.`,
+                    { applicationId, previousStatus: application.status, newStatus }
+                ).catch(err => logger.error('Notification send error', err));
+
+                // Email notification
+                emailService.sendApplicationStatusEmail(
+                    studentUser.email,
+                    studentName,
+                    fullApp.applicationNumber,
+                    newStatus
+                ).catch(err => logger.error('Email send error', err));
+            }
+        } catch (err) {
+            logger.error('Failed to send status change notification', err);
+        }
+
         return updated;
     }
 
@@ -473,7 +513,7 @@ export class AdminService {
     /**
      * Add admin note to application
      */
-    async addNote(applicationId: string, adminId: string, noteText: string, isPrivate: boolean = true) {
+    async addNote(applicationId: string, adminId: string, noteText: string, isPrivate: boolean = true, section?: string) {
         const application = await prisma.application.findUnique({
             where: { id: applicationId },
         });
@@ -488,6 +528,7 @@ export class AdminService {
                 adminId,
                 noteText,
                 isPrivate,
+                section: section || null,
             },
             include: {
                 admin: {
@@ -871,6 +912,31 @@ export class AdminService {
                 submittedAt: true,
                 disbursedAmount: true,
                 disbursedAt: true,
+                gpa: true,
+                expectedGraduationDate: true,
+                totalAnnualFeeAmount: true,
+                remainingSemesters: true,
+                appliedToOtherScholarships: true,
+                communityInvolvement: true,
+                careerAspirations: true,
+                givingBackPlan: true,
+                studentProfile: {
+                    select: {
+                        guardianName: true,
+                        guardianPhone: true,
+                        guardianOccupation: true,
+                        householdIncomeRange: true,
+                        orphanStatus: true,
+                        disabilityStatus: true,
+                        disabilityType: true,
+                        whoLivesWith: true,
+                        numberOfSiblings: true,
+                        siblingsInSchool: true,
+                        numberOfDependents: true,
+                        kcseGrade: true,
+                        previousScholarship: true,
+                    }
+                }
             },
         });
 
@@ -890,6 +956,17 @@ export class AdminService {
             'Submitted At',
             'Disbursed Amount (KES)',
             'Disbursed At',
+            'Guardian Name',
+            'Guardian Phone',
+            'Household Income',
+            'Orphan Status',
+            'Disability',
+            'Who Lives With',
+            'Siblings',
+            'KCSE Grade',
+            'GPA',
+            'Total Annual Fee (KES)',
+            'Career Aspirations',
         ];
 
         // Generate CSV rows
@@ -908,6 +985,17 @@ export class AdminService {
             app.submittedAt?.toISOString() || '',
             app.disbursedAmount?.toString() || '',
             app.disbursedAt?.toISOString() || '',
+            app.studentProfile?.guardianName || '',
+            app.studentProfile?.guardianPhone || '',
+            app.studentProfile?.householdIncomeRange || '',
+            app.studentProfile?.orphanStatus || '',
+            app.studentProfile?.disabilityStatus ? 'Yes' : 'No',
+            app.studentProfile?.whoLivesWith || '',
+            app.studentProfile?.numberOfSiblings?.toString() || '',
+            app.studentProfile?.kcseGrade || '',
+            app.gpa || '',
+            app.totalAnnualFeeAmount?.toString() || '',
+            app.careerAspirations || '',
         ]);
 
         const csv = [headers.join(','), ...rows.map(row =>
@@ -918,6 +1006,325 @@ export class AdminService {
             csv,
             count: applications.length,
             filename: `stf-applications-export-${new Date().toISOString().split('T')[0]}.csv`,
+        };
+    }
+
+    // ==================== APPLICATION PERIODS ====================
+
+    /**
+     * Get all application periods
+     */
+    async getApplicationPeriods() {
+        return prisma.applicationPeriod.findMany({
+            orderBy: { startDate: 'desc' },
+        });
+    }
+
+    /**
+     * Create a new application period
+     */
+    async createApplicationPeriod(data: {
+        academicYear: string;
+        title: string;
+        description?: string;
+        startDate: string;
+        endDate: string;
+    }) {
+        return prisma.applicationPeriod.create({
+            data: {
+                academicYear: data.academicYear,
+                title: data.title,
+                description: data.description,
+                startDate: new Date(data.startDate),
+                endDate: new Date(data.endDate),
+            },
+        });
+    }
+
+    /**
+     * Update an application period
+     */
+    async updateApplicationPeriod(id: string, data: {
+        academicYear?: string;
+        title?: string;
+        description?: string;
+        startDate?: string;
+        endDate?: string;
+    }) {
+        const period = await prisma.applicationPeriod.findUnique({ where: { id } });
+        if (!period) throw new Error('Application period not found');
+
+        return prisma.applicationPeriod.update({
+            where: { id },
+            data: {
+                ...data,
+                startDate: data.startDate ? new Date(data.startDate) : undefined,
+                endDate: data.endDate ? new Date(data.endDate) : undefined,
+            },
+        });
+    }
+
+    /**
+     * Delete an application period
+     */
+    async deleteApplicationPeriod(id: string) {
+        const period = await prisma.applicationPeriod.findUnique({ where: { id } });
+        if (!period) throw new Error('Application period not found');
+        if (period.isActive) throw new Error('Cannot delete an active application period');
+
+        await prisma.applicationPeriod.delete({ where: { id } });
+        return { deleted: true };
+    }
+
+    /**
+     * Activate an application period (deactivates all others)
+     */
+    async activateApplicationPeriod(id: string) {
+        const period = await prisma.applicationPeriod.findUnique({ where: { id } });
+        if (!period) throw new Error('Application period not found');
+
+        return prisma.$transaction(async (tx) => {
+            // Deactivate all periods
+            await tx.applicationPeriod.updateMany({
+                where: { isActive: true },
+                data: { isActive: false },
+            });
+
+            // Activate the target period
+            return tx.applicationPeriod.update({
+                where: { id },
+                data: { isActive: true },
+            });
+        });
+    }
+
+    // ==================== APPLICATION SCORING ====================
+
+    /**
+     * Score an application (create or update)
+     */
+    async scoreApplication(
+        applicationId: string,
+        reviewerId: string,
+        scores: {
+            financialNeed: number;
+            academicMerit: number;
+            communityImpact: number;
+            vulnerability: number;
+            comments?: string;
+        }
+    ) {
+        const application = await prisma.application.findUnique({
+            where: { id: applicationId },
+        });
+
+        if (!application) throw new Error('Application not found');
+
+        const overallScore = (
+            scores.financialNeed +
+            scores.academicMerit +
+            scores.communityImpact +
+            scores.vulnerability
+        ) / 4;
+
+        return prisma.reviewScore.upsert({
+            where: {
+                applicationId_reviewerId: {
+                    applicationId,
+                    reviewerId,
+                },
+            },
+            update: {
+                ...scores,
+                overallScore,
+            },
+            create: {
+                applicationId,
+                reviewerId,
+                ...scores,
+                overallScore,
+            },
+        });
+    }
+
+    /**
+     * Get all scores for an application
+     */
+    async getApplicationScores(applicationId: string) {
+        const scores = await prisma.reviewScore.findMany({
+            where: { applicationId },
+            include: {
+                reviewer: {
+                    select: { email: true },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        const averageScore = scores.length > 0
+            ? scores.reduce((sum, s) => sum + s.overallScore, 0) / scores.length
+            : null;
+
+        return {
+            scores,
+            averageScore,
+            totalReviewers: scores.length,
+        };
+    }
+
+    /**
+     * Get scoring rubric definition
+     */
+    getScoringRubric() {
+        return {
+            criteria: [
+                {
+                    key: 'financialNeed',
+                    label: 'Financial Need',
+                    description: 'Level of financial hardship and need for bursary support',
+                    min: 1,
+                    max: 5,
+                    weight: 0.25,
+                },
+                {
+                    key: 'academicMerit',
+                    label: 'Academic Merit',
+                    description: 'Academic performance and potential',
+                    min: 1,
+                    max: 5,
+                    weight: 0.25,
+                },
+                {
+                    key: 'communityImpact',
+                    label: 'Community Impact',
+                    description: 'Community involvement and potential to give back',
+                    min: 1,
+                    max: 5,
+                    weight: 0.25,
+                },
+                {
+                    key: 'vulnerability',
+                    label: 'Vulnerability',
+                    description: 'Orphan status, disability, and social vulnerability',
+                    min: 1,
+                    max: 5,
+                    weight: 0.25,
+                },
+            ],
+            totalMaxScore: 5,
+        };
+    }
+
+    // ==================== ENHANCED ANALYTICS ====================
+
+    /**
+     * Gender analytics
+     */
+    async getGenderAnalytics() {
+        const results = await prisma.$queryRaw<
+            Array<{ gender: string; total: bigint; approved: bigint; rejected: bigint }>
+        >`
+            SELECT
+                sp."gender",
+                COUNT(a.id)::bigint AS total,
+                COUNT(CASE WHEN a.status = 'APPROVED' OR a.status = 'DISBURSED' THEN 1 END)::bigint AS approved,
+                COUNT(CASE WHEN a.status = 'REJECTED' THEN 1 END)::bigint AS rejected
+            FROM applications a
+            JOIN student_profiles sp ON a."studentProfileId" = sp.id
+            WHERE a.status != 'DRAFT'
+            GROUP BY sp."gender"
+        `;
+
+        return results.map(r => ({
+            gender: r.gender,
+            total: Number(r.total),
+            approved: Number(r.approved),
+            rejected: Number(r.rejected),
+        }));
+    }
+
+    /**
+     * Conversion funnel analytics
+     */
+    async getFunnelAnalytics() {
+        const [draft, pending, underReview, approved, disbursed] = await Promise.all([
+            prisma.application.count({ where: { status: 'DRAFT' } }),
+            prisma.application.count({ where: { status: 'PENDING' } }),
+            prisma.application.count({ where: { status: 'UNDER_REVIEW' } }),
+            prisma.application.count({ where: { status: 'APPROVED' } }),
+            prisma.application.count({ where: { status: 'DISBURSED' } }),
+        ]);
+
+        const totalSubmitted = pending + underReview + approved + disbursed;
+
+        return {
+            stages: [
+                { stage: 'Draft', count: draft, percentage: 100 },
+                { stage: 'Submitted', count: totalSubmitted, percentage: draft > 0 ? Math.round((totalSubmitted / (draft + totalSubmitted)) * 100) : 0 },
+                { stage: 'Under Review', count: underReview + approved + disbursed, percentage: totalSubmitted > 0 ? Math.round(((underReview + approved + disbursed) / totalSubmitted) * 100) : 0 },
+                { stage: 'Approved', count: approved + disbursed, percentage: totalSubmitted > 0 ? Math.round(((approved + disbursed) / totalSubmitted) * 100) : 0 },
+                { stage: 'Disbursed', count: disbursed, percentage: totalSubmitted > 0 ? Math.round((disbursed / totalSubmitted) * 100) : 0 },
+            ],
+        };
+    }
+
+    /**
+     * Time-to-decision analytics
+     */
+    async getTimeToDecisionAnalytics() {
+        const results = await prisma.$queryRaw<
+            Array<{ new_status: string; avg_days: number }>
+        >`
+            SELECT
+                ash."newStatus" as new_status,
+                AVG(EXTRACT(EPOCH FROM (ash."changedAt" - a."submittedAt")) / 86400)::float AS avg_days
+            FROM application_status_history ash
+            JOIN applications a ON ash."applicationId" = a.id
+            WHERE a."submittedAt" IS NOT NULL
+            AND ash."newStatus" IN ('UNDER_REVIEW', 'APPROVED', 'REJECTED', 'DISBURSED')
+            GROUP BY ash."newStatus"
+        `;
+
+        return results.map(r => ({
+            status: r.new_status,
+            averageDays: Math.round((r.avg_days || 0) * 10) / 10,
+        }));
+    }
+
+    /**
+     * Demographics analytics (orphan, disability, age, income)
+     */
+    async getDemographicsAnalytics() {
+        const [orphanData, disabilityData, incomeData] = await Promise.all([
+            prisma.studentProfile.groupBy({
+                by: ['orphanStatus'],
+                _count: { id: true },
+                where: { orphanStatus: { not: null } },
+            }),
+            prisma.studentProfile.groupBy({
+                by: ['disabilityStatus'],
+                _count: { id: true },
+            }),
+            prisma.studentProfile.groupBy({
+                by: ['householdIncomeRange'],
+                _count: { id: true },
+                where: { householdIncomeRange: { not: null } },
+            }),
+        ]);
+
+        return {
+            orphanStatus: orphanData.map(d => ({
+                status: d.orphanStatus,
+                count: d._count.id,
+            })),
+            disability: disabilityData.map(d => ({
+                hasDisability: d.disabilityStatus,
+                count: d._count.id,
+            })),
+            householdIncome: incomeData.map(d => ({
+                range: d.householdIncomeRange,
+                count: d._count.id,
+            })),
         };
     }
 }

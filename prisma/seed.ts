@@ -5,6 +5,9 @@ import {
     ApplicationStatus,
     ProfileDocumentType,
     ApplicationDocumentType,
+    HouseholdIncomeRange,
+    OrphanStatus,
+    WhoLivesWith,
     Prisma
 } from '@prisma/client';
 // @ts-ignore
@@ -100,6 +103,36 @@ async function main() {
     });
 
     console.log('Counties seeded');
+
+    // ==================== INSTITUTIONS ====================
+
+    const institutions = [
+        { name: 'University of Nairobi', type: 'UNIVERSITY', county: 'Nairobi', isVerified: true },
+        { name: 'Kenyatta University', type: 'UNIVERSITY', county: 'Nairobi', isVerified: true },
+        { name: 'Moi University', type: 'UNIVERSITY', county: 'Uasin Gishu', isVerified: true },
+        { name: 'Egerton University', type: 'UNIVERSITY', county: 'Nakuru', isVerified: true },
+        { name: 'Maseno University', type: 'UNIVERSITY', county: 'Kisumu', isVerified: true },
+        { name: 'Jomo Kenyatta University', type: 'UNIVERSITY', county: 'Kiambu', isVerified: true },
+        { name: 'Strathmore University', type: 'UNIVERSITY', county: 'Nairobi', isVerified: true },
+        { name: 'Alliance High School', type: 'HIGH_SCHOOL', county: 'Kiambu', isVerified: true },
+        { name: 'Kenya High School', type: 'HIGH_SCHOOL', county: 'Nairobi', isVerified: true },
+        { name: 'Mangu High School', type: 'HIGH_SCHOOL', county: 'Kiambu', isVerified: true },
+        { name: 'Narok Boys High School', type: 'HIGH_SCHOOL', county: 'Narok', isVerified: true },
+        { name: 'Kenya Polytechnic', type: 'TVET', county: 'Nairobi', isVerified: true },
+        { name: 'Eldoret Polytechnic', type: 'TVET', county: 'Uasin Gishu', isVerified: true },
+        { name: 'Narok TVET College', type: 'TVET', county: 'Narok', isVerified: true },
+        { name: 'Kenya Medical Training College', type: 'COLLEGE', county: 'Nairobi', isVerified: true },
+    ];
+
+    for (const inst of institutions) {
+        await prisma.institution.upsert({
+            where: { name: inst.name },
+            update: {},
+            create: inst,
+        });
+    }
+
+    console.log('Institutions seeded');
 
     // ==================== USERS & ADMINS ====================
 
@@ -210,6 +243,24 @@ async function main() {
                 programmeOrCourse: educationLevel === EducationLevel.UNIVERSITY ? 'Computer Science' : 'Secondary Education',
                 admissionYear: 2023,
                 isComplete: true,
+                // Phase 2 fields
+                phoneNumber: `+2549${String(index).padStart(8, '0')}`,
+                emergencyContactName: `Parent of Student ${index}`,
+                emergencyContactPhone: `+2548${String(index).padStart(8, '0')}`,
+                whoLivesWith: getRandom([WhoLivesWith.BOTH_PARENTS, WhoLivesWith.SINGLE_MOTHER, WhoLivesWith.GUARDIAN, WhoLivesWith.GRANDPARENT]),
+                guardianName: `Guardian ${index}`,
+                guardianPhone: `+2546${String(index).padStart(8, '0')}`,
+                guardianOccupation: getRandom(['Farmer', 'Teacher', 'Business', 'Unemployed']),
+                householdIncomeRange: getRandom([HouseholdIncomeRange.BELOW_5K, HouseholdIncomeRange.FROM_5K_TO_15K, HouseholdIncomeRange.FROM_15K_TO_30K]),
+                numberOfSiblings: Math.floor(Math.random() * 6) + 1,
+                siblingsInSchool: Math.floor(Math.random() * 3),
+                numberOfDependents: Math.floor(Math.random() * 5) + 2,
+                orphanStatus: getRandom([OrphanStatus.BOTH_PARENTS_ALIVE, OrphanStatus.BOTH_PARENTS_ALIVE, OrphanStatus.SINGLE_ORPHAN]),
+                disabilityStatus: index === 5,
+                disabilityType: index === 5 ? 'Visual impairment' : null,
+                kcseGrade: getRandom(['A', 'A-', 'B+', 'B', 'B-', 'C+']),
+                previousScholarship: index % 3 === 0,
+                previousScholarshipDetails: index % 3 === 0 ? 'Received CDF bursary in 2023' : null,
                 profileDocuments: {
                     create: [
                         {

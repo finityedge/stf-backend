@@ -504,7 +504,8 @@ export const searchStudents = async (req: Request, res: Response): Promise<void>
  * /api/admin/notes:
  *   post:
  *     tags: [Admin]
- *     summary: Add admin note
+ *     summary: Add admin note to an application
+ *     description: Adds a structured review note to an application. Notes can be categorized by section.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -519,23 +520,33 @@ export const searchStudents = async (req: Request, res: Response): Promise<void>
  *             properties:
  *               applicationId:
  *                 type: string
+ *                 format: uuid
+ *                 description: The application to attach the note to
  *               noteText:
  *                 type: string
+ *                 description: The note content
  *               isPrivate:
  *                 type: boolean
  *                 default: true
+ *                 description: Whether the note is visible only to admins
+ *               section:
+ *                 type: string
+ *                 enum: [financial, academic, vulnerability, general]
+ *                 description: Optional section category for structured reviews
  *     responses:
  *       201:
  *         description: Note added successfully
+ *       400:
+ *         description: Validation error
  */
 export const addNote = async (req: Request, res: Response): Promise<void> => {
     try {
         const adminId = (req as any).user!.id;
         // Route can be /notes (body has applicationId) or /applications/:id/notes (params has id)
         const applicationId = req.params.id || req.body.applicationId;
-        const { noteText, isPrivate } = req.body;
+        const { noteText, isPrivate, section } = req.body;
 
-        const note = await adminService.addNote(applicationId as string, adminId, noteText, isPrivate);
+        const note = await adminService.addNote(applicationId as string, adminId, noteText, isPrivate, section);
 
         res.status(201).json({
             success: true,
@@ -779,5 +790,595 @@ export const getDisbursementAnalytics = async (_req: Request, res: Response): Pr
             },
             timestamp: new Date().toISOString(),
         });
+    }
+};
+
+// ==================== APPLICATION PERIODS ====================
+
+/**
+ * @swagger
+ * /api/admin/application-periods:
+ *   get:
+ *     tags: [Admin - Application Periods]
+ *     summary: Get all application periods
+ *     description: Returns all application periods, ordered by creation date descending.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of application periods
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       title:
+ *                         type: string
+ *                       academicYear:
+ *                         type: string
+ *                         example: "2025/26"
+ *                       startDate:
+ *                         type: string
+ *                         format: date-time
+ *                       endDate:
+ *                         type: string
+ *                         format: date-time
+ *                       isActive:
+ *                         type: boolean
+ *                       description:
+ *                         type: string
+ *                         nullable: true
+ */
+export const getApplicationPeriods = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const periods = await adminService.getApplicationPeriods();
+        res.status(200).json({ success: true, data: periods, timestamp: new Date().toISOString() });
+    } catch (error: any) {
+        logger.error('Get application periods error:', error);
+        res.status(500).json({ success: false, error: { code: 'INTERNAL_SERVER_ERROR', message: error.message }, timestamp: new Date().toISOString() });
+    }
+};
+
+/**
+ * @swagger
+ * /api/admin/application-periods:
+ *   post:
+ *     tags: [Admin - Application Periods]
+ *     summary: Create a new application period
+ *     description: Creates a new application period. Only one period can be active at a time.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - academicYear
+ *               - startDate
+ *               - endDate
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 100
+ *                 example: "2025/26 Bursary Application Window"
+ *               academicYear:
+ *                 type: string
+ *                 pattern: "^\\d{4}/\\d{2}$"
+ *                 example: "2025/26"
+ *               startDate:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2026-01-15T00:00:00Z"
+ *               endDate:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2026-03-31T23:59:59Z"
+ *               description:
+ *                 type: string
+ *                 maxLength: 500
+ *                 example: "Application window for the 2025/26 academic year"
+ *     responses:
+ *       201:
+ *         description: Application period created successfully
+ *       400:
+ *         description: Validation error (e.g. start date must be before end date)
+ */
+export const createApplicationPeriod = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const period = await adminService.createApplicationPeriod(req.body);
+        res.status(201).json({ success: true, message: 'Application period created', data: period, timestamp: new Date().toISOString() });
+    } catch (error: any) {
+        logger.error('Create application period error:', error);
+        res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: error.message }, timestamp: new Date().toISOString() });
+    }
+};
+
+/**
+ * @swagger
+ * /api/admin/application-periods/{id}:
+ *   put:
+ *     tags: [Admin - Application Periods]
+ *     summary: Update an application period
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Application period ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               academicYear:
+ *                 type: string
+ *               startDate:
+ *                 type: string
+ *                 format: date-time
+ *               endDate:
+ *                 type: string
+ *                 format: date-time
+ *               description:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Application period updated
+ *       404:
+ *         description: Period not found
+ */
+export const updateApplicationPeriod = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const period = await adminService.updateApplicationPeriod(req.params.id as string, req.body);
+        res.status(200).json({ success: true, message: 'Application period updated', data: period, timestamp: new Date().toISOString() });
+    } catch (error: any) {
+        logger.error('Update application period error:', error);
+        const status = error.message.includes('not found') ? 404 : 400;
+        res.status(status).json({ success: false, error: { code: status === 404 ? 'RESOURCE_NOT_FOUND' : 'VALIDATION_ERROR', message: error.message }, timestamp: new Date().toISOString() });
+    }
+};
+
+/**
+ * @swagger
+ * /api/admin/application-periods/{id}:
+ *   delete:
+ *     tags: [Admin - Application Periods]
+ *     summary: Delete an application period
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Application period ID
+ *     responses:
+ *       200:
+ *         description: Application period deleted
+ *       404:
+ *         description: Period not found
+ */
+export const deleteApplicationPeriod = async (req: Request, res: Response): Promise<void> => {
+    try {
+        await adminService.deleteApplicationPeriod(req.params.id as string);
+        res.status(200).json({ success: true, message: 'Application period deleted', timestamp: new Date().toISOString() });
+    } catch (error: any) {
+        logger.error('Delete application period error:', error);
+        const status = error.message.includes('not found') ? 404 : 400;
+        res.status(status).json({ success: false, error: { code: status === 404 ? 'RESOURCE_NOT_FOUND' : 'VALIDATION_ERROR', message: error.message }, timestamp: new Date().toISOString() });
+    }
+};
+
+/**
+ * @swagger
+ * /api/admin/application-periods/{id}/activate:
+ *   put:
+ *     tags: [Admin - Application Periods]
+ *     summary: Activate an application period
+ *     description: Activates this period and deactivates all other periods. The active period controls the /api/config/current response.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Application period ID to activate
+ *     responses:
+ *       200:
+ *         description: Application period activated, all others deactivated
+ *       404:
+ *         description: Period not found
+ */
+export const activateApplicationPeriod = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const period = await adminService.activateApplicationPeriod(req.params.id as string);
+        res.status(200).json({ success: true, message: 'Application period activated', data: period, timestamp: new Date().toISOString() });
+    } catch (error: any) {
+        logger.error('Activate application period error:', error);
+        const status = error.message.includes('not found') ? 404 : 400;
+        res.status(status).json({ success: false, error: { code: status === 404 ? 'RESOURCE_NOT_FOUND' : 'VALIDATION_ERROR', message: error.message }, timestamp: new Date().toISOString() });
+    }
+};
+
+// ==================== SCORING ====================
+
+/**
+ * @swagger
+ * /api/admin/applications/{id}/scores:
+ *   post:
+ *     tags: [Admin - Scoring]
+ *     summary: Score an application
+ *     description: Submit or update a review score for an application. Each reviewer can only submit one score per application.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Application ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - financialNeed
+ *               - academicMerit
+ *               - communityImpact
+ *               - vulnerability
+ *             properties:
+ *               financialNeed:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 5
+ *                 description: Financial need score (1-5)
+ *               academicMerit:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 5
+ *                 description: Academic merit score (1-5)
+ *               communityImpact:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 5
+ *                 description: Community impact score (1-5)
+ *               vulnerability:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 5
+ *                 description: Vulnerability score (1-5)
+ *               comments:
+ *                 type: string
+ *                 description: Optional reviewer comments
+ *     responses:
+ *       201:
+ *         description: Score submitted successfully
+ *       404:
+ *         description: Application not found
+ *       400:
+ *         description: Validation error
+ */
+export const scoreApplication = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const adminId = (req as any).user!.id;
+        const score = await adminService.scoreApplication(req.params.id as string, adminId, req.body);
+        res.status(201).json({ success: true, message: 'Score submitted', data: score, timestamp: new Date().toISOString() });
+    } catch (error: any) {
+        logger.error('Score application error:', error);
+        const status = error.message.includes('not found') ? 404 : 400;
+        res.status(status).json({ success: false, error: { code: status === 404 ? 'RESOURCE_NOT_FOUND' : 'VALIDATION_ERROR', message: error.message }, timestamp: new Date().toISOString() });
+    }
+};
+
+/**
+ * @swagger
+ * /api/admin/applications/{id}/scores:
+ *   get:
+ *     tags: [Admin - Scoring]
+ *     summary: Get all review scores for an application
+ *     description: Returns all review scores and the computed average for the given application.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Application ID
+ *     responses:
+ *       200:
+ *         description: Application scores with average
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     scores:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           financialNeed:
+ *                             type: integer
+ *                           academicMerit:
+ *                             type: integer
+ *                           communityImpact:
+ *                             type: integer
+ *                           vulnerability:
+ *                             type: integer
+ *                           overallScore:
+ *                             type: number
+ *                           comments:
+ *                             type: string
+ *                             nullable: true
+ *                     averageScore:
+ *                       type: number
+ *                       nullable: true
+ */
+export const getApplicationScores = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const result = await adminService.getApplicationScores(req.params.id as string);
+        res.status(200).json({ success: true, data: result, timestamp: new Date().toISOString() });
+    } catch (error: any) {
+        logger.error('Get application scores error:', error);
+        res.status(500).json({ success: false, error: { code: 'INTERNAL_SERVER_ERROR', message: error.message }, timestamp: new Date().toISOString() });
+    }
+};
+
+/**
+ * @swagger
+ * /api/admin/scoring-rubric:
+ *   get:
+ *     tags: [Admin - Scoring]
+ *     summary: Get the scoring rubric criteria definitions
+ *     description: Returns the scoring rubric with criteria names, descriptions, and the min/max scale.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Scoring rubric criteria
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     criteria:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                           description:
+ *                             type: string
+ *                           minScore:
+ *                             type: integer
+ *                           maxScore:
+ *                             type: integer
+ */
+export const getScoringRubric = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const rubric = adminService.getScoringRubric();
+        res.status(200).json({ success: true, data: rubric, timestamp: new Date().toISOString() });
+    } catch (error: any) {
+        logger.error('Get scoring rubric error:', error);
+        res.status(500).json({ success: false, error: { code: 'INTERNAL_SERVER_ERROR', message: error.message }, timestamp: new Date().toISOString() });
+    }
+};
+
+// ==================== ENHANCED ANALYTICS ====================
+
+/**
+ * @swagger
+ * /api/admin/analytics/gender:
+ *   get:
+ *     tags: [Admin - Analytics]
+ *     summary: Get gender breakdown analytics
+ *     description: Returns application count and approval rates grouped by gender.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Gender breakdown
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       gender:
+ *                         type: string
+ *                       count:
+ *                         type: integer
+ *                       approved:
+ *                         type: integer
+ *                       rejected:
+ *                         type: integer
+ */
+export const getGenderAnalytics = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const data = await adminService.getGenderAnalytics();
+        res.status(200).json({ success: true, data, timestamp: new Date().toISOString() });
+    } catch (error: any) {
+        logger.error('Get gender analytics error:', error);
+        res.status(500).json({ success: false, error: { code: 'INTERNAL_SERVER_ERROR', message: error.message }, timestamp: new Date().toISOString() });
+    }
+};
+
+/**
+ * @swagger
+ * /api/admin/analytics/funnel:
+ *   get:
+ *     tags: [Admin - Analytics]
+ *     summary: Get application funnel analytics
+ *     description: Returns the count of applications at each stage of the review pipeline (draft, submitted, under review, approved, rejected, disbursed).
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Funnel stage counts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       status:
+ *                         type: string
+ *                       count:
+ *                         type: integer
+ */
+export const getFunnelAnalytics = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const data = await adminService.getFunnelAnalytics();
+        res.status(200).json({ success: true, data, timestamp: new Date().toISOString() });
+    } catch (error: any) {
+        logger.error('Get funnel analytics error:', error);
+        res.status(500).json({ success: false, error: { code: 'INTERNAL_SERVER_ERROR', message: error.message }, timestamp: new Date().toISOString() });
+    }
+};
+
+/**
+ * @swagger
+ * /api/admin/analytics/time-to-decision:
+ *   get:
+ *     tags: [Admin - Analytics]
+ *     summary: Get time-to-decision analytics
+ *     description: Returns average, min, and max time (in days) between application submission and final decision.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Time-to-decision statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     averageDays:
+ *                       type: number
+ *                     minDays:
+ *                       type: number
+ *                     maxDays:
+ *                       type: number
+ *                     totalDecided:
+ *                       type: integer
+ */
+export const getTimeToDecisionAnalytics = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const data = await adminService.getTimeToDecisionAnalytics();
+        res.status(200).json({ success: true, data, timestamp: new Date().toISOString() });
+    } catch (error: any) {
+        logger.error('Get time-to-decision analytics error:', error);
+        res.status(500).json({ success: false, error: { code: 'INTERNAL_SERVER_ERROR', message: error.message }, timestamp: new Date().toISOString() });
+    }
+};
+
+/**
+ * @swagger
+ * /api/admin/analytics/demographics:
+ *   get:
+ *     tags: [Admin - Analytics]
+ *     summary: Get demographics overview
+ *     description: Returns demographic breakdowns including county distribution, education level, orphan status, and household income ranges.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Demographic breakdowns
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     byCounty:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     byEducationLevel:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     byOrphanStatus:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     byIncomeRange:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ */
+export const getDemographicsAnalytics = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const data = await adminService.getDemographicsAnalytics();
+        res.status(200).json({ success: true, data, timestamp: new Date().toISOString() });
+    } catch (error: any) {
+        logger.error('Get demographics analytics error:', error);
+        res.status(500).json({ success: false, error: { code: 'INTERNAL_SERVER_ERROR', message: error.message }, timestamp: new Date().toISOString() });
     }
 };
