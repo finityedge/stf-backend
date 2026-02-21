@@ -336,7 +336,7 @@ export class StudentService {
         );
 
         // Calculate percentage (fields + documents)
-        const totalItems = requiredFields.length + 1 + requiredDocumentTypes.length; // +1 for ID
+        const totalItems = requiredFields.length + requiredDocumentTypes.length;
         const completedItems = filledCount + (requiredDocumentTypes.length - missingDocuments.length);
         const completenessPercentage = Math.round((completedItems / totalItems) * 100);
 

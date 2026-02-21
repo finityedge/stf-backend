@@ -33,7 +33,7 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
-      CORS_ORIGIN: ${CORS_ORIGIN}
+      CORS_ORIGIN: ${CORS_ORIGIN},https://${DOMAIN_NAME}
       UPLOAD_DIR: ./uploads
       # Encryption key for sensitive data
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
