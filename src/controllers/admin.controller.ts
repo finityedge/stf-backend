@@ -538,6 +538,49 @@ export const searchStudents = async (req: Request, res: Response): Promise<void>
  *         description: Note added successfully
  *       400:
  *         description: Validation error
+ *
+ * /api/admin/applications/{id}/notes:
+ *   post:
+ *     tags: [Admin]
+ *     summary: Add note to a specific application
+ *     description: Adds a structured review note to an application using the application ID in the path.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Application ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - noteText
+ *             properties:
+ *               noteText:
+ *                 type: string
+ *                 description: The note content
+ *               isPrivate:
+ *                 type: boolean
+ *                 default: true
+ *                 description: Whether the note is visible only to admins
+ *               section:
+ *                 type: string
+ *                 enum: [financial, academic, vulnerability, general]
+ *                 description: Optional section category
+ *     responses:
+ *       201:
+ *         description: Note added successfully
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Application not found
  */
 export const addNote = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -572,7 +615,8 @@ export const addNote = async (req: Request, res: Response): Promise<void> => {
  * /api/admin/notes/{id}:
  *   put:
  *     tags: [Admin]
- *     summary: Update note
+ *     summary: Update a note
+ *     description: Update the text of an existing admin note by its note ID.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -581,9 +625,27 @@ export const addNote = async (req: Request, res: Response): Promise<void> => {
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
+ *         description: Note ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - noteText
+ *             properties:
+ *               noteText:
+ *                 type: string
+ *                 description: Updated note content
  *     responses:
  *       200:
- *         description: Note updated
+ *         description: Note updated successfully
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Note not found
  */
 export const updateNote = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -617,7 +679,8 @@ export const updateNote = async (req: Request, res: Response): Promise<void> => 
  * /api/admin/notes/{id}:
  *   delete:
  *     tags: [Admin]
- *     summary: Delete note
+ *     summary: Delete a note
+ *     description: Permanently delete an admin note by its note ID.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -626,9 +689,15 @@ export const updateNote = async (req: Request, res: Response): Promise<void> => 
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
+ *         description: Note ID
  *     responses:
  *       200:
- *         description: Note deleted
+ *         description: Note deleted successfully
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Note not found
  */
 export const deleteNote = async (req: Request, res: Response): Promise<void> => {
     try {

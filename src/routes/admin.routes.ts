@@ -10,6 +10,7 @@ import {
     getApplicationSchema,
     getStudentSchema,
     searchStudentsSchema,
+    addGeneralNoteSchema,
     addNoteSchema,
     updateNoteSchema,
     deleteNoteSchema,
@@ -116,7 +117,7 @@ router.get(
 
 router.post(
     '/notes',
-    validate(addNoteSchema),
+    validate(addGeneralNoteSchema),
     adminController.addNote
 );
 

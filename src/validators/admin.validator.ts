@@ -86,6 +86,17 @@ export const searchStudentsSchema = z.object({
 
 // ==================== NOTES SCHEMAS ====================
 
+// For POST /notes (no application ID param)
+export const addGeneralNoteSchema = z.object({
+    body: z.object({
+        applicationId: z.string().uuid('Invalid application ID'),
+        noteText: z.string().min(1, 'Note content is required').max(5000),
+        isPrivate: z.boolean().optional().default(true),
+        section: z.enum(['financial', 'academic', 'vulnerability', 'general']).optional(),
+    }),
+});
+
+// For POST /applications/:id/notes (requires application ID param)
 export const addNoteSchema = z.object({
     params: z.object({
         id: z.string().uuid('Invalid application ID'),
@@ -97,10 +108,10 @@ export const addNoteSchema = z.object({
     }),
 });
 
+// For PUT /notes/:id and DELETE /notes/:id (note ID is in :id)
 export const updateNoteSchema = z.object({
     params: z.object({
-        id: z.string().uuid('Invalid application ID'),
-        noteId: z.string().uuid('Invalid note ID'),
+        id: z.string().uuid('Invalid note ID'),
     }),
     body: z.object({
         noteText: z.string().min(1, 'Note content is required').max(5000),
@@ -109,8 +120,7 @@ export const updateNoteSchema = z.object({
 
 export const deleteNoteSchema = z.object({
     params: z.object({
-        id: z.string().uuid('Invalid application ID'),
-        noteId: z.string().uuid('Invalid note ID'),
+        id: z.string().uuid('Invalid note ID'),
     }),
 });
 
