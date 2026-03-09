@@ -216,6 +216,14 @@ function generatePhone(index: number): string {
 
 interface GeoIds { countyId: string; subCountyId: string; wardId: string }
 
+/** Deterministic short hash so duplicate names across counties don't collide on the `code` unique column */
+function geoCode(base: string, suffix: string): string {
+    let h = 5381;
+    for (let i = 0; i < base.length; i++) h = ((h << 5) + h) ^ base.charCodeAt(i);
+    const hash = Math.abs(h).toString(36).slice(0, 5).toUpperCase();
+    return `${suffix.slice(0, 6)}_${hash}_I`;   // max ~15 chars, always unique per name
+}
+
 async function resolveOrCreateGeo(
     countyName: string,
     subCountyName: string,
@@ -224,34 +232,56 @@ async function resolveOrCreateGeo(
 ): Promise<GeoIds | null> {
     if (!countyName) { flags.push('Missing county – location not saved'); return null; }
 
-    // County
-    let county = await prisma.county.findFirst({ where: { name: { equals: countyName, mode: 'insensitive' } } });
+    // ── County ────────────────────────────────────────────────────────────────
+    let county = await prisma.county.findFirst({
+        where: { name: { equals: countyName, mode: 'insensitive' } }
+    });
     if (!county) {
-        const code = countyName.toUpperCase().replace(/\s+/g, '_').slice(0, 10) + '_IMP';
-        county = await prisma.county.create({ data: { name: countyName, code } });
-        flags.push(`Created new county: ${countyName}`);
+        const code = geoCode(countyName, countyName.toUpperCase().replace(/\s+/g, '_').slice(0, 6));
+        try {
+            county = await prisma.county.create({ data: { name: countyName, code } });
+            flags.push(`Created new county: ${countyName}`);
+        } catch {
+            // Another row may have just created it (parallel-ish processing) — re-fetch
+            county = await prisma.county.findFirst({ where: { name: { equals: countyName, mode: 'insensitive' } } });
+            if (!county) throw new Error(`Failed to create or find county: ${countyName}`);
+        }
     }
 
-    // Sub-county
+    // ── Sub-county ────────────────────────────────────────────────────────────
+    const scName = subCountyName || 'Unknown';
     let subCounty = await prisma.subCounty.findFirst({
-        where: { countyId: county.id, name: { equals: subCountyName || 'Unknown', mode: 'insensitive' } }
+        where: { countyId: county.id, name: { equals: scName, mode: 'insensitive' } }
     });
     if (!subCounty) {
-        const scName = subCountyName || 'Unknown';
-        const code = `${county.code}_${scName.toUpperCase().replace(/\s+/g, '_').slice(0, 8)}_IMP`;
-        subCounty = await prisma.subCounty.create({ data: { countyId: county.id, name: scName, code } });
-        flags.push(`Created new sub-county: ${scName}`);
+        const code = geoCode(`${county.id}:${scName}`, scName.toUpperCase().replace(/\s+/g, '_').slice(0, 6));
+        try {
+            subCounty = await prisma.subCounty.create({ data: { countyId: county.id, name: scName, code } });
+            flags.push(`Created new sub-county: ${scName}`);
+        } catch {
+            subCounty = await prisma.subCounty.findFirst({
+                where: { countyId: county.id, name: { equals: scName, mode: 'insensitive' } }
+            });
+            if (!subCounty) throw new Error(`Failed to create or find sub-county: ${scName}`);
+        }
     }
 
-    // Ward
+    // ── Ward ──────────────────────────────────────────────────────────────────
+    const wName = wardName || 'Unknown';
     let ward = await prisma.ward.findFirst({
-        where: { subCountyId: subCounty.id, name: { equals: wardName || 'Unknown', mode: 'insensitive' } }
+        where: { subCountyId: subCounty.id, name: { equals: wName, mode: 'insensitive' } }
     });
     if (!ward) {
-        const wName = wardName || 'Unknown';
-        const code = `${subCounty.code}_${wName.toUpperCase().replace(/\s+/g, '_').slice(0, 8)}_IMP`;
-        ward = await prisma.ward.create({ data: { subCountyId: subCounty.id, name: wName, code } });
-        flags.push(`Created new ward: ${wName}`);
+        const code = geoCode(`${subCounty.id}:${wName}`, wName.toUpperCase().replace(/\s+/g, '_').slice(0, 6));
+        try {
+            ward = await prisma.ward.create({ data: { subCountyId: subCounty.id, name: wName, code } });
+            flags.push(`Created new ward: ${wName}`);
+        } catch {
+            ward = await prisma.ward.findFirst({
+                where: { subCountyId: subCounty.id, name: { equals: wName, mode: 'insensitive' } }
+            });
+            if (!ward) throw new Error(`Failed to create or find ward: ${wName}`);
+        }
     }
 
     return { countyId: county.id, subCountyId: subCounty.id, wardId: ward.id };
@@ -435,14 +465,16 @@ async function processRow(row: Record<string, string>, rowIndex: number): Promis
         let profile = await prisma.studentProfile.findFirst({ where: { userId: user.id } });
 
         if (!profile) {
-            const profileData: Prisma.StudentProfileCreateInput = {
-                user: { connect: { id: user.id } },
+            // UncheckedCreateInput lets us pass scalar FK ids (countyId etc.) directly
+            // without Prisma also requiring the nested relation objects.
+            const profileData: Prisma.StudentProfileUncheckedCreateInput = {
+                userId: user.id,
                 fullName,
                 dateOfBirth,
                 gender: genderRaw || 'UNKNOWN',
                 ageRange: ageRangeRaw || null,
                 nationalIdNumber: nationalId || null,
-                // Location (required fields – fallback to placeholder if no geo)
+                // Location (required FK scalars – fallback to placeholder if no geo)
                 countyId: geoIds?.countyId ?? await getOrCreateFallbackCounty(),
                 subCountyId: geoIds?.subCountyId ?? await getOrCreateFallbackSubCounty(),
                 wardId: geoIds?.wardId ?? await getOrCreateFallbackWard(),
@@ -457,7 +489,7 @@ async function processRow(row: Record<string, string>, rowIndex: number): Promis
                 guardianName: guardianName || null,
                 guardianPhone: guardianPhone || null,
                 guardianOccupation: guardianRel || null,
-                // Calculated / misc
+                // Misc
                 isComplete: false,
                 phoneNumber: phone,
             };
