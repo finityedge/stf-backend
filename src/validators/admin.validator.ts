@@ -27,7 +27,6 @@ export const listApplicationsSchema = z.object({
         search: z.string().optional(),
         sortBy: z.enum([
             'submittedAt',
-            'outstandingFeesBalance',
             'status',
             'snapshotFullName',
             'snapshotInstitution',

@@ -98,27 +98,7 @@ export interface ProfileCompletenessResponse {
 // ==================== APPLICATION DRAFT ====================
 
 export interface CreateDraftRequest {
-    outstandingFeesBalance: number;
-    hardshipNarrative: string;
-    currentYearOfStudy: string;
-    modeOfSponsorship: string[];
-    howSupportingEducation?: string[];
-    currentFeeSituation?: string;
-    isFeesAffectingStudies?: boolean;
-    hasBeenSentHome?: boolean;
-    hasMissedExamsOrClasses?: boolean;
-    difficultiesFaced?: string[];
-    goalForAcademicYear?: string;
-    referralSource?: string;
-    gpa?: string;
-    expectedGraduationDate?: string;
-    totalAnnualFeeAmount?: number;
-    remainingSemesters?: number;
-    appliedToOtherScholarships?: boolean;
-    otherScholarshipsDetails?: string;
-    communityInvolvement?: string;
-    careerAspirations?: string;
-    givingBackPlan?: string;
+    formData: Record<string, any>;
 }
 
 export interface UpdateDraftRequest extends Partial<CreateDraftRequest> { }
@@ -170,10 +150,10 @@ export interface CreateProfileRequest {
     subCountyId: string;
     wardId: string;
     currentResidence?: string;
-    institutionName: string;
-    institutionType: EducationLevel;
-    programmeOrCourse: string;
-    admissionYear: number;
+    institutionName?: string;
+    institutionType?: EducationLevel;
+    programmeOrCourse?: string;
+    admissionYear?: number;
     institutionId?: string;
     whoLivesWith?: WhoLivesWith;
     whoLivesWithOther?: string;

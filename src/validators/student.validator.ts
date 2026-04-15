@@ -24,10 +24,10 @@ export const createProfileSchema = z.object({
         subCountyId: z.string().uuid('Invalid sub-county ID'),
         wardId: z.string().uuid('Invalid ward ID'),
         currentResidence: z.string().max(200).optional(),
-        institutionName: z.string().min(2, 'Institution name is required').max(200),
-        institutionType: z.nativeEnum(EducationLevel),
-        programmeOrCourse: z.string().min(2, 'Programme/course is required').max(200),
-        admissionYear: z.number().int().min(2000).max(new Date().getFullYear() + 1),
+        institutionName: z.string().min(2, 'Institution name is required').max(200).optional(),
+        institutionType: z.nativeEnum(EducationLevel).optional(),
+        programmeOrCourse: z.string().min(2, 'Programme/course is required').max(200).optional(),
+        admissionYear: z.number().int().min(2000).max(new Date().getFullYear() + 1).optional(),
         institutionId: z.string().uuid('Invalid institution ID').optional(),
 
         // Family & Guardian
@@ -122,42 +122,8 @@ export const deleteProfileDocumentSchema = z.object({
 
 export const createDraftSchema = z.object({
     body: z.object({
-        outstandingFeesBalance: z.number().positive('Outstanding fees must be positive').refine(
-            (val) => validateFeeBalance(val),
-            { message: 'Fee balance must be between 1,000 and 10,000,000 KES' }
-        ),
-        hardshipNarrative: z.string().min(10).refine(
-            (val) => {
-                const wordCount = countWords(val);
-                return wordCount >= 50 && wordCount <= 120;
-            },
-            { message: 'Hardship narrative must be between 50 and 120 words' }
-        ),
-        currentYearOfStudy: z.string().min(1, 'Year of study is required'),
-        modeOfSponsorship: z.array(z.string()).min(1, 'At least one mode of sponsorship is required'),
-        howSupportingEducation: z.array(z.string()).optional().default([]),
-        currentFeeSituation: z.string().max(500).optional(),
-        isFeesAffectingStudies: z.boolean().optional().default(false),
-        hasBeenSentHome: z.boolean().optional().default(false),
-        hasMissedExamsOrClasses: z.boolean().optional().default(false),
-        difficultiesFaced: z.array(z.string()).optional().default([]),
-        goalForAcademicYear: z.string().max(1000).optional(),
-        referralSource: z.string().max(200).optional(),
-
-        // Enhanced fields (Phase 2)
-        gpa: z.string().max(10).optional(),
-        expectedGraduationDate: z.string().refine(
-            (val) => !isNaN(Date.parse(val)),
-            { message: 'Invalid date format' }
-        ).optional(),
-        totalAnnualFeeAmount: z.number().positive().optional(),
-        remainingSemesters: z.number().int().min(1).max(20).optional(),
-        appliedToOtherScholarships: z.boolean().optional().default(false),
-        otherScholarshipsDetails: z.string().max(500).optional(),
-        communityInvolvement: z.string().max(2000).optional(),
-        careerAspirations: z.string().max(2000).optional(),
-        givingBackPlan: z.string().max(2000).optional(),
-    }),
+        formData: z.record(z.any()).catchall(z.any()).optional().default({}),
+    }).catchall(z.any()),
 });
 
 export const updateDraftSchema = z.object({
@@ -165,42 +131,8 @@ export const updateDraftSchema = z.object({
         id: z.string().uuid('Invalid application ID'),
     }),
     body: z.object({
-        outstandingFeesBalance: z.number().positive().refine(
-            (val) => validateFeeBalance(val),
-            { message: 'Fee balance must be between 1,000 and 10,000,000 KES' }
-        ).optional(),
-        hardshipNarrative: z.string().min(10).refine(
-            (val) => {
-                const wordCount = countWords(val);
-                return wordCount >= 50 && wordCount <= 120;
-            },
-            { message: 'Hardship narrative must be between 50 and 120 words' }
-        ).optional(),
-        currentYearOfStudy: z.string().min(1).optional(),
-        modeOfSponsorship: z.array(z.string()).min(1).optional(),
-        howSupportingEducation: z.array(z.string()).optional(),
-        currentFeeSituation: z.string().max(500).optional(),
-        isFeesAffectingStudies: z.boolean().optional(),
-        hasBeenSentHome: z.boolean().optional(),
-        hasMissedExamsOrClasses: z.boolean().optional(),
-        difficultiesFaced: z.array(z.string()).optional(),
-        goalForAcademicYear: z.string().max(1000).optional(),
-        referralSource: z.string().max(200).optional(),
-
-        // Enhanced fields (Phase 2)
-        gpa: z.string().max(10).optional(),
-        expectedGraduationDate: z.string().refine(
-            (val) => !isNaN(Date.parse(val)),
-            { message: 'Invalid date format' }
-        ).optional(),
-        totalAnnualFeeAmount: z.number().positive().optional(),
-        remainingSemesters: z.number().int().min(1).max(20).optional(),
-        appliedToOtherScholarships: z.boolean().optional(),
-        otherScholarshipsDetails: z.string().max(500).optional(),
-        communityInvolvement: z.string().max(2000).optional(),
-        careerAspirations: z.string().max(2000).optional(),
-        givingBackPlan: z.string().max(2000).optional(),
-    }),
+        formData: z.record(z.any()).catchall(z.any()).optional(),
+    }).catchall(z.any()),
 });
 
 // ==================== APPLICATION DOCUMENT SCHEMAS ====================

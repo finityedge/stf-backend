@@ -7,8 +7,7 @@ import {
     ApplicationDocumentType,
     HouseholdIncomeRange,
     OrphanStatus,
-    WhoLivesWith,
-    Prisma
+    WhoLivesWith
 } from '@prisma/client';
 
 import {
@@ -255,10 +254,6 @@ export class StudentService {
             'countyId',
             'subCountyId',
             'wardId',
-            'institutionName',
-            'institutionType',
-            'programmeOrCourse',
-            'admissionYear',
             'phoneNumber',
             'emergencyContactName',
             'emergencyContactPhone',
@@ -303,10 +298,6 @@ export class StudentService {
             { name: 'countyId', label: 'County' },
             { name: 'subCountyId', label: 'Sub-County' },
             { name: 'wardId', label: 'Ward' },
-            { name: 'institutionName', label: 'Institution Name' },
-            { name: 'institutionType', label: 'Education Level' },
-            { name: 'programmeOrCourse', label: 'Programme/Course' },
-            { name: 'admissionYear', label: 'Admission Year' },
             { name: 'phoneNumber', label: 'Phone Number' },
             { name: 'emergencyContactName', label: 'Emergency Contact Name' },
             { name: 'emergencyContactPhone', label: 'Emergency Contact Phone' },
@@ -624,28 +615,7 @@ export class StudentService {
                     studentProfileId: profile.id,
                     status: ApplicationStatus.DRAFT,
                     applicationPeriodId: activePeriod?.id || null,
-                    outstandingFeesBalance: data.outstandingFeesBalance,
-                    hardshipNarrative: data.hardshipNarrative,
-                    currentYearOfStudy: data.currentYearOfStudy,
-                    modeOfSponsorship: data.modeOfSponsorship,
-                    howSupportingEducation: data.howSupportingEducation || [],
-                    currentFeeSituation: data.currentFeeSituation,
-                    isFeesAffectingStudies: data.isFeesAffectingStudies || false,
-                    hasBeenSentHome: data.hasBeenSentHome || false,
-                    hasMissedExamsOrClasses: data.hasMissedExamsOrClasses || false,
-                    difficultiesFaced: data.difficultiesFaced || [],
-                    goalForAcademicYear: data.goalForAcademicYear,
-                    referralSource: data.referralSource,
-                    // Phase 2 enhanced fields
-                    gpa: data.gpa,
-                    expectedGraduationDate: data.expectedGraduationDate ? new Date(data.expectedGraduationDate) : undefined,
-                    totalAnnualFeeAmount: data.totalAnnualFeeAmount ? new Prisma.Decimal(data.totalAnnualFeeAmount) : undefined,
-                    remainingSemesters: data.remainingSemesters,
-                    appliedToOtherScholarships: data.appliedToOtherScholarships || false,
-                    otherScholarshipsDetails: data.otherScholarshipsDetails,
-                    communityInvolvement: data.communityInvolvement,
-                    careerAspirations: data.careerAspirations,
-                    givingBackPlan: data.givingBackPlan,
+                    formData: data.formData || {},
                 },
             });
 
@@ -698,10 +668,7 @@ export class StudentService {
         const updated = await prisma.application.update({
             where: { id: applicationId },
             data: {
-                ...data,
-                outstandingFeesBalance: data.outstandingFeesBalance
-                    ? new Prisma.Decimal(data.outstandingFeesBalance)
-                    : undefined,
+                formData: data.formData || {},
             },
         });
 

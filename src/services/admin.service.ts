@@ -70,16 +70,7 @@ export class AdminService {
             where.snapshotCounty = { contains: county, mode: 'insensitive' };
         }
 
-        // Balance range filter
-        if (minBalance !== undefined || maxBalance !== undefined) {
-            where.outstandingFeesBalance = {};
-            if (minBalance !== undefined) {
-                where.outstandingFeesBalance.gte = minBalance;
-            }
-            if (maxBalance !== undefined) {
-                where.outstandingFeesBalance.lte = maxBalance;
-            }
-        }
+        // Balance range filter (Requires raw query with JSON formData, omitted for now)
 
         // Date range filter
         if (submittedAfter || submittedBefore) {
@@ -92,10 +83,7 @@ export class AdminService {
             }
         }
 
-        // Has been sent home filter
-        if (hasBeenSentHome !== undefined) {
-            where.hasBeenSentHome = hasBeenSentHome;
-        }
+        // Has been sent home filter (now inside formData)
 
         // Search filter (name, ID, institution)
         if (search) {
@@ -630,12 +618,8 @@ export class AdminService {
         });
         const totalDisbursed = Number(disbursementResult._sum.disbursedAmount || 0);
 
-        // Average fee balance for pending applications
-        const avgBalanceResult = await prisma.application.aggregate({
-            _avg: { outstandingFeesBalance: true },
-            where: { status: { in: ['PENDING', 'UNDER_REVIEW'] } },
-        });
-        const averageFeeBalance = Number(avgBalanceResult._avg.outstandingFeesBalance || 0);
+        // Average fee balance for pending applications (now inside formData)
+        const averageFeeBalance = 0;
 
         // Monthly trend (last 6 months)
         const sixMonthsAgo = new Date();
