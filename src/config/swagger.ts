@@ -103,33 +103,40 @@ const options = {
                 },
                 CreateDraftRequest: {
                     type: 'object',
+                    description: 'Creates a new draft application. Pass all form answers as key-value pairs inside `formData`. The backend stores this as a JSON blob — no individual question fields are validated. You can omit `formData` entirely to create an empty draft and fill it in later via PUT.',
                     properties: {
-                        outstandingFeesBalance: { type: 'number' },
-                        hardshipNarrative: { type: 'string' },
-                        currentYearOfStudy: { type: 'string' },
-                        modeOfSponsorship: { type: 'array', items: { type: 'string' } },
-                        howSupportingEducation: { type: 'array', items: { type: 'string' } },
-                        currentFeeSituation: { type: 'string' },
-                        isFeesAffectingStudies: { type: 'boolean' },
-                        hasBeenSentHome: { type: 'boolean' },
-                        hasMissedExamsOrClasses: { type: 'boolean' },
-                        difficultiesFaced: { type: 'array', items: { type: 'string' } },
-                        goalForAcademicYear: { type: 'string' },
-                        referralSource: { type: 'string' },
-                        gpa: { type: 'string' },
-                        expectedGraduationDate: { type: 'string', format: 'date' },
-                        totalAnnualFeeAmount: { type: 'number' },
-                        remainingSemesters: { type: 'integer' },
-                        appliedToOtherScholarships: { type: 'boolean' },
-                        otherScholarshipsDetails: { type: 'string' },
-                        communityInvolvement: { type: 'string' },
-                        careerAspirations: { type: 'string' },
-                        givingBackPlan: { type: 'string' }
+                        formData: {
+                            type: 'object',
+                            description: 'Arbitrary key-value pairs representing the application questionnaire answers. Any field names and value types are accepted. Example keys your frontend may send: outstandingFeesBalance, hardshipNarrative, currentYearOfStudy, gpa, careerAspirations, etc.',
+                            additionalProperties: true,
+                            example: {
+                                currentYearOfStudy: '2nd Year',
+                                gpa: '3.8',
+                                outstandingFeesBalance: 45000,
+                                hardshipNarrative: 'My father passed away last year...',
+                                hasBeenSentHome: true,
+                                careerAspirations: 'I want to become a software engineer',
+                                communityInvolvement: 'I volunteer at the local church every weekend'
+                            }
+                        }
                     }
                 },
                 UpdateDraftRequest: {
                     type: 'object',
-                    description: 'All fields from CreateDraftRequest, all optional'
+                    description: 'Same shape as CreateDraftRequest. Replaces the entire formData blob. Send the full updated formData object, not just the changed fields.',
+                    properties: {
+                        formData: {
+                            type: 'object',
+                            description: 'Full updated formData object. This replaces the existing formData entirely.',
+                            additionalProperties: true,
+                            example: {
+                                currentYearOfStudy: '3rd Year',
+                                gpa: '3.9',
+                                outstandingFeesBalance: 52000,
+                                hardshipNarrative: 'Updated narrative after review...'
+                            }
+                        }
+                    }
                 },
                 BulkUpdateRequest: {
                     type: 'object',
