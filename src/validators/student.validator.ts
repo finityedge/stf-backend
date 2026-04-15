@@ -2,8 +2,6 @@ import { z } from 'zod';
 import { EducationLevel, ProfileDocumentType, ApplicationDocumentType, HouseholdIncomeRange, OrphanStatus, WhoLivesWith } from '@prisma/client';
 import {
     validateKenyanPhone,
-    countWords,
-    validateFeeBalance
 } from '../utils/validators';
 
 // ==================== PROFILE SCHEMAS ====================
@@ -122,7 +120,7 @@ export const deleteProfileDocumentSchema = z.object({
 
 export const createDraftSchema = z.object({
     body: z.object({
-        formData: z.record(z.any()).catchall(z.any()).optional().default({}),
+        formData: z.record(z.string(), z.any()).optional().default({}),
     }).catchall(z.any()),
 });
 
@@ -131,7 +129,7 @@ export const updateDraftSchema = z.object({
         id: z.string().uuid('Invalid application ID'),
     }),
     body: z.object({
-        formData: z.record(z.any()).catchall(z.any()).optional(),
+        formData: z.record(z.string(), z.any()).optional(),
     }).catchall(z.any()),
 });
 

@@ -33,11 +33,8 @@ export class AdminService {
             status,
             educationLevel,
             county,
-            minBalance,
-            maxBalance,
             submittedAfter,
             submittedBefore,
-            hasBeenSentHome,
             search,
             sortBy = 'submittedAt',
             sortOrder = 'desc',
@@ -868,15 +865,7 @@ export class AdminService {
             where.snapshotCounty = { contains: filters.county, mode: 'insensitive' };
         }
 
-        if (filters.minBalance !== undefined || filters.maxBalance !== undefined) {
-            where.outstandingFeesBalance = {};
-            if (filters.minBalance !== undefined) {
-                where.outstandingFeesBalance.gte = filters.minBalance;
-            }
-            if (filters.maxBalance !== undefined) {
-                where.outstandingFeesBalance.lte = filters.maxBalance;
-            }
-        }
+        // Balance range filter omitted — outstanding fees are now stored inside formData (JSONB)
 
         const applications = await prisma.application.findMany({
             where,
@@ -891,36 +880,11 @@ export class AdminService {
                 snapshotProgramme: true,
                 snapshotEducationLevel: true,
                 snapshotCounty: true,
-                outstandingFeesBalance: true,
+                formData: true,
                 status: true,
                 submittedAt: true,
                 disbursedAmount: true,
                 disbursedAt: true,
-                gpa: true,
-                expectedGraduationDate: true,
-                totalAnnualFeeAmount: true,
-                remainingSemesters: true,
-                appliedToOtherScholarships: true,
-                communityInvolvement: true,
-                careerAspirations: true,
-                givingBackPlan: true,
-                studentProfile: {
-                    select: {
-                        guardianName: true,
-                        guardianPhone: true,
-                        guardianOccupation: true,
-                        householdIncomeRange: true,
-                        orphanStatus: true,
-                        disabilityStatus: true,
-                        disabilityType: true,
-                        whoLivesWith: true,
-                        numberOfSiblings: true,
-                        siblingsInSchool: true,
-                        numberOfDependents: true,
-                        kcseGrade: true,
-                        previousScholarship: true,
-                    }
-                }
             },
         });
 
@@ -954,6 +918,10 @@ export class AdminService {
         ];
 
         // Generate CSV rows
+        // Helper to safely pull a value out of the JSONB formData blob
+        const fd = (app: any, key: string): string =>
+            app.formData && typeof app.formData === 'object' ? (app.formData[key] ?? '') : '';
+
         const rows = applications.map(app => [
             app.applicationNumber,
             app.snapshotFullName || '',
@@ -964,22 +932,22 @@ export class AdminService {
             app.snapshotProgramme || '',
             app.snapshotEducationLevel || '',
             app.snapshotCounty || '',
-            app.outstandingFeesBalance?.toString() || '',
+            fd(app, 'outstandingFeesBalance'),   // now in formData
             app.status,
             app.submittedAt?.toISOString() || '',
             app.disbursedAmount?.toString() || '',
             app.disbursedAt?.toISOString() || '',
-            app.studentProfile?.guardianName || '',
-            app.studentProfile?.guardianPhone || '',
-            app.studentProfile?.householdIncomeRange || '',
-            app.studentProfile?.orphanStatus || '',
-            app.studentProfile?.disabilityStatus ? 'Yes' : 'No',
-            app.studentProfile?.whoLivesWith || '',
-            app.studentProfile?.numberOfSiblings?.toString() || '',
-            app.studentProfile?.kcseGrade || '',
-            app.gpa || '',
-            app.totalAnnualFeeAmount?.toString() || '',
-            app.careerAspirations || '',
+            fd(app, 'guardianName'),
+            fd(app, 'guardianPhone'),
+            fd(app, 'householdIncomeRange'),
+            fd(app, 'orphanStatus'),
+            fd(app, 'disabilityStatus') === 'true' ? 'Yes' : 'No',
+            fd(app, 'whoLivesWith'),
+            fd(app, 'numberOfSiblings'),
+            fd(app, 'kcseGrade'),
+            fd(app, 'gpa'),
+            fd(app, 'totalAnnualFeeAmount'),
+            fd(app, 'careerAspirations'),
         ]);
 
         const csv = [headers.join(','), ...rows.map(row =>
