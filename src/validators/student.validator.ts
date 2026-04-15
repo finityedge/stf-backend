@@ -141,7 +141,7 @@ export const uploadApplicationDocumentSchema = z.object({
     }),
     body: z.object({
         documentType: z.nativeEnum(ApplicationDocumentType, {
-            errorMap: () => ({ message: 'Invalid document type. Allowed: FEE_STRUCTURE, BALANCE_STATEMENT, SUPPORT_LETTER, OTHER_EVIDENCE' })
+            errorMap: () => ({ message: 'Invalid document type. Allowed: SCHOOL_STAMP_LETTER, ADMISSION_LETTER, FEE_STRUCTURE, BIRTH_CERTIFICATE_NID, GUARDIAN_ID, DEATH_CERTIFICATE' })
         }),
     }),
 });

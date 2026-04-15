@@ -45,10 +45,12 @@ enum ProfileDocumentType {
 }
 
 enum ApplicationDocumentType {
+  SCHOOL_STAMP_LETTER
+  ADMISSION_LETTER
   FEE_STRUCTURE
-  BALANCE_STATEMENT
-  SUPPORT_LETTER
-  OTHER_EVIDENCE
+  BIRTH_CERTIFICATE_NID
+  GUARDIAN_ID
+  DEATH_CERTIFICATE
 }
 
 enum HouseholdIncomeRange {

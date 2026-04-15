@@ -553,12 +553,32 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
  *   post:
  *     tags: [Student]
  *     summary: Upload application document
+ *     description: |
+ *       Uploads a document and attaches it to a DRAFT application.
+ *
+ *       **Document Types**
+ *
+ *       | Type | Required | Description |
+ *       |---|---|---|
+ *       | `BIRTH_CERTIFICATE_NID` | ✅ **Required** | Birth Certificate or National ID — application cannot be submitted without this |
+ *       | `SCHOOL_STAMP_LETTER` | Optional | School-stamped recommendation or support letter |
+ *       | `ADMISSION_LETTER` | Optional | Official admission letter from the institution |
+ *       | `FEE_STRUCTURE` | Optional | Current fee structure from the institution |
+ *       | `GUARDIAN_ID` | Optional | Guardian's National ID or passport |
+ *       | `DEATH_CERTIFICATE` | Optional | Death certificate (if applicable for orphan status) |
+ *
+ *       **Rules:**
+ *       - The application must be in `DRAFT` status.
+ *       - Only `BIRTH_CERTIFICATE_NID` blocks submission if missing — all others are optional.
+ *       - Send as `multipart/form-data` with a `file` field (PDF, JPG, PNG; max 10MB) and a `documentType` field.
+ *       - Multiple documents of different types can be uploaded.
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Application UUID
  *         schema:
  *           type: string
  *     requestBody:
@@ -574,12 +594,51 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
  *               file:
  *                 type: string
  *                 format: binary
+ *                 description: PDF, JPG, or PNG file (max 10MB)
  *               documentType:
  *                 type: string
- *                 enum: [FEE_STRUCTURE, BALANCE_STATEMENT, SUPPORT_LETTER, OTHER_EVIDENCE]
+ *                 enum:
+ *                   - SCHOOL_STAMP_LETTER
+ *                   - ADMISSION_LETTER
+ *                   - FEE_STRUCTURE
+ *                   - BIRTH_CERTIFICATE_NID
+ *                   - GUARDIAN_ID
+ *                   - DEATH_CERTIFICATE
+ *                 description: Type of document being uploaded
  *     responses:
  *       201:
- *         description: Document uploaded successfully
+ *         description: Document uploaded and linked to the application
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     applicationId:
+ *                       type: string
+ *                     documentType:
+ *                       type: string
+ *                       enum: [SCHOOL_STAMP_LETTER, ADMISSION_LETTER, FEE_STRUCTURE, BIRTH_CERTIFICATE_NID, GUARDIAN_ID, DEATH_CERTIFICATE]
+ *                     originalFilename:
+ *                       type: string
+ *                     fileSize:
+ *                       type: integer
+ *                     mimeType:
+ *                       type: string
+ *                     uploadedAt:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Invalid document type, wrong application status, or missing file
+ *       404:
+ *         description: Application not found
  */
 export const uploadApplicationDocument = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -750,18 +809,38 @@ export const linkProfileDocument = async (req: Request, res: Response): Promise<
  * /api/student/applications/{id}/submit:
  *   post:
  *     tags: [Student]
- *     summary: Submit application (DRAFT -> PENDING)
+ *     summary: Submit application (DRAFT → PENDING)
+ *     description: |
+ *       Transitions the application from `DRAFT` to `PENDING` status for admin review.
+ *
+ *       **Pre-submission checklist (enforced by the API):**
+ *       1. Application must be in `DRAFT` status.
+ *       2. Student's profile must be complete.
+ *       3. At least one document of type `BIRTH_CERTIFICATE_NID` must be uploaded.
+ *
+ *       **Optional documents** (not required but recommended):
+ *       - `SCHOOL_STAMP_LETTER` — School-stamped letter
+ *       - `ADMISSION_LETTER` — Admission letter
+ *       - `FEE_STRUCTURE` — Fee structure from institution
+ *       - `GUARDIAN_ID` — Guardian's ID
+ *       - `DEATH_CERTIFICATE` — Death certificate (for orphans)
+ *
+ *       After submission, a snapshot of the student profile is saved and the application
+ *       can no longer be edited. The student will receive a notification.
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Application UUID
  *         schema:
  *           type: string
  *     responses:
  *       200:
- *         description: Application submitted successfully
+ *         description: Application submitted successfully — status is now PENDING
+ *       400:
+ *         description: Missing BIRTH_CERTIFICATE_NID, wrong status, or profile incomplete
  */
 export const submitApplication = async (req: Request, res: Response): Promise<void> => {
     try {

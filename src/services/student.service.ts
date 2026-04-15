@@ -902,13 +902,13 @@ export class StudentService {
             throw new Error('Only draft applications can be submitted');
         }
 
-        // Validate minimum required documents
-        const hasRequiredDocs = application.applicationDocuments.some(
-            d => d.documentType === 'FEE_STRUCTURE'
+        // Validate minimum required documents — only BIRTH_CERTIFICATE_NID is mandatory
+        const hasBirthCertificate = application.applicationDocuments.some(
+            d => d.documentType === 'BIRTH_CERTIFICATE_NID'
         );
 
-        if (!hasRequiredDocs) {
-            throw new Error('Please upload the current fee structure document before submitting');
+        if (!hasBirthCertificate) {
+            throw new Error('Please upload your Birth Certificate / National ID document (BIRTH_CERTIFICATE_NID) before submitting');
         }
 
         // Create snapshot and submit
