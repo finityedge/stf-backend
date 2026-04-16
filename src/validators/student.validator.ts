@@ -26,7 +26,7 @@ export const createProfileSchema = z.object({
         institutionType: z.nativeEnum(EducationLevel).optional(),
         programmeOrCourse: z.string().min(2, 'Programme/course is required').max(200).optional(),
         admissionYear: z.number().int().min(2000).max(new Date().getFullYear() + 1).optional(),
-        institutionId: z.string().uuid('Invalid institution ID').optional(),
+        institutionId: z.string().transform(val => val === '' ? undefined : val).pipe(z.string().uuid('Invalid institution ID').optional()),
 
         // Family & Guardian
         whoLivesWith: z.nativeEnum(WhoLivesWith).optional(),
@@ -72,7 +72,7 @@ export const updateProfileSchema = z.object({
         institutionType: z.nativeEnum(EducationLevel).optional(),
         programmeOrCourse: z.string().min(2).max(200).optional(),
         admissionYear: z.number().int().min(2000).max(new Date().getFullYear() + 1).optional(),
-        institutionId: z.string().uuid().optional(),
+        institutionId: z.string().transform(val => val === '' ? undefined : val).pipe(z.string().uuid().optional()),
 
         // Family & Guardian
         whoLivesWith: z.nativeEnum(WhoLivesWith).optional(),
